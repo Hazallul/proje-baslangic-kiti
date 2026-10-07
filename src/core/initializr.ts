@@ -128,7 +128,7 @@ export async function latestMavenVersion(groupId: string, artifactId: string): P
 // Initializr sürüm aralıkları: "4.0.0" (en az) veya "[4.0.0,4.3.0-M1)"
 // ---------------------------------------------------------------------------
 
-function inRange(version: string, range: string): boolean {
+export function inRange(version: string, range: string): boolean {
   const match = range.match(/^([[(])(.+),(.+)([\])])$/);
   if (!match) return compareVersions(version, range) >= 0;
   const [, open, min, max, close] = match;
@@ -138,7 +138,7 @@ function inRange(version: string, range: string): boolean {
 }
 
 /** Kararlı sürüm, aynı numaralı M / RC / SNAPSHOT sürümlerinden büyüktür. */
-function compareVersions(a: string, b: string): number {
+export function compareVersions(a: string, b: string): number {
   const parse = (v: string) => {
     const [nums, qualifier = ''] = v.split(/-(.*)/);
     const parts = nums.split('.').map(Number);

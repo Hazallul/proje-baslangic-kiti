@@ -66,7 +66,7 @@ export const DATABASES: DatabaseDef[] = [
       - "\${DB_PORT}:3306"
     volumes:
       - db-data:/var/lib/mysql
-${healthcheck('["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD}"]')}`,
+${healthcheck('["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p${DB_ROOT_PASSWORD}"]')}`,
     backendEnv: {
       DB_URL: 'jdbc:mysql://db:3306/${DB_NAME}',
       DB_USER: '${DB_USER}',
@@ -74,7 +74,7 @@ ${healthcheck('["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-
     },
     backendDependsOn: { db: 'service_healthy' },
     properties: [
-      'spring.datasource.url=${DB_URL:jdbc:mysql://localhost:3306/app}',
+      'spring.datasource.url=${DB_URL:jdbc:mysql://localhost:${DB_PORT:3306}/${DB_NAME:app}}',
       'spring.datasource.username=${DB_USER:app}',
       'spring.datasource.password=${DB_PASSWORD:app}',
     ],
@@ -104,7 +104,7 @@ ${healthcheck('["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-
       - "\${DB_PORT}:5432"
     volumes:
       - db-data:/var/lib/postgresql/data
-${healthcheck('["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]')}`,
+${healthcheck('["CMD-SHELL", "pg_isready -h 127.0.0.1 -U ${DB_USER} -d ${DB_NAME}"]')}`,
     backendEnv: {
       DB_URL: 'jdbc:postgresql://db:5432/${DB_NAME}',
       DB_USER: '${DB_USER}',
@@ -112,7 +112,7 @@ ${healthcheck('["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]')}`,
     },
     backendDependsOn: { db: 'service_healthy' },
     properties: [
-      'spring.datasource.url=${DB_URL:jdbc:postgresql://localhost:5432/app}',
+      'spring.datasource.url=${DB_URL:jdbc:postgresql://localhost:${DB_PORT:5432}/${DB_NAME:app}}',
       'spring.datasource.username=${DB_USER:app}',
       'spring.datasource.password=${DB_PASSWORD:app}',
     ],
@@ -152,7 +152,7 @@ ${healthcheck('["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]')}
     },
     backendDependsOn: { db: 'service_healthy' },
     properties: [
-      'spring.datasource.url=${DB_URL:jdbc:mariadb://localhost:3306/app}',
+      'spring.datasource.url=${DB_URL:jdbc:mariadb://localhost:${DB_PORT:3306}/${DB_NAME:app}}',
       'spring.datasource.username=${DB_USER:app}',
       'spring.datasource.password=${DB_PASSWORD:app}',
     ],
@@ -201,7 +201,7 @@ ${healthcheck('["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U s
     },
     backendDependsOn: { 'db-init': 'service_completed_successfully' },
     properties: [
-      'spring.datasource.url=${DB_URL:jdbc:sqlserver://localhost:1433;databaseName=app;encrypt=true;trustServerCertificate=true}',
+      'spring.datasource.url=${DB_URL:jdbc:sqlserver://localhost:${DB_PORT:1433};databaseName=${DB_NAME:app};encrypt=true;trustServerCertificate=true}',
       'spring.datasource.username=${DB_USER:sa}',
       'spring.datasource.password=${DB_PASSWORD:}',
     ],
@@ -234,7 +234,7 @@ ${healthcheck('["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand(\'ping\'
       MONGODB_URI: 'mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/app?authSource=admin',
     },
     backendDependsOn: { mongodb: 'service_healthy' },
-    properties: ['spring.mongodb.uri=${MONGODB_URI:mongodb://localhost:27017/app}'],
+    properties: ['spring.mongodb.uri=${MONGODB_URI:mongodb://${MONGO_USER:app}:${MONGO_PASSWORD:app}@localhost:${MONGO_PORT:27017}/app?authSource=admin}'],
     volume: 'mongo-data',
   },
   {
@@ -257,7 +257,7 @@ ${healthcheck('["CMD", "redis-cli", "ping"]')}`,
     backendDependsOn: { redis: 'service_healthy' },
     properties: [
       'spring.data.redis.host=${REDIS_HOST:localhost}',
-      'spring.data.redis.port=6379',
+      'spring.data.redis.port=${REDIS_PORT:6379}',
     ],
     volume: 'redis-data',
   },
@@ -283,7 +283,7 @@ ${healthcheck('["CMD", "redis-cli", "ping"]')}`,
 ${healthcheck('["CMD-SHELL", "curl -fs http://localhost:9200/_cluster/health || exit 1"]')}`,
     backendEnv: { ELASTICSEARCH_URIS: 'http://elasticsearch:9200' },
     backendDependsOn: { elasticsearch: 'service_healthy' },
-    properties: ['spring.elasticsearch.uris=${ELASTICSEARCH_URIS:http://localhost:9200}'],
+    properties: ['spring.elasticsearch.uris=${ELASTICSEARCH_URIS:http://localhost:${ELASTICSEARCH_PORT:9200}}'],
     volume: 'elasticsearch-data',
   },
 ];

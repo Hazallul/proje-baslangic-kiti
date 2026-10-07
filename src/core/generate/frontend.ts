@@ -1,9 +1,14 @@
-import { readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { findFramework } from '../catalog/frontend.js';
+import { hasBackend } from '../selection.js';
 import type { FrameworkId, ResolvedProject } from '../types.js';
 import { run, writeFiles } from '../util.js';
 import type { StepContext } from './backend.js';
+import {
+  angularStartPage, localeFiles, needsStartPageCss, REACT_I18N, reactStartPage, reactStartPageTest, START_PAGE_CSS,
+  svelteStartPage, VUE_I18N, vueStartPage,
+} from './startpage.js';
 
 /**
  * Frontend'i resmi araçlarla (create-vite / Angular CLI) oluşturur, sonra seçilen
@@ -35,18 +40,23 @@ export async function generateFrontend(resolved: ResolvedProject, projectDir: st
   }
 
   // 2. Seçeneklere göre dosyalar
-  const plan = buildPlan(framework, options, sel.name);
+  const plan = buildPlan(framework, options, sel.name, hasBackend(sel));
   writeFiles(dir, plan.files);
   plan.edits.forEach((edit) => edit(dir));
+  if (framework !== 'angular') cleanupViteScaffold(dir, sel.name);
   writeFiles(dir, {
     Dockerfile: dockerfile(framework),
     '.dockerignore': 'node_modules/\ndist/\n.angular/\n',
   });
 
   // 3. Paketler
-  await exec('npm install --no-audit --no-fund');
-  if (plan.dependencies.length) await exec(`npm install --no-audit --no-fund ${plan.dependencies.join(' ')}`);
-  if (plan.devDependencies.length) await exec(`npm install -D --no-audit --no-fund ${plan.devDependencies.join(' ')}`);
+  // Bilgisayardaki node_modules sadece editör ve kurulum komutları için; uygulama Docker'da kendi
+  // kurulumuyla çalışır. Paketlerin kurulum betikleri (esbuild gibi) Windows Akıllı Uygulama
+  // Denetimi'ne takılabildiği için çalıştırılmaz.
+  const install = 'npm install --no-audit --no-fund --ignore-scripts';
+  await exec(install);
+  if (plan.dependencies.length) await exec(`${install} ${plan.dependencies.join(' ')}`);
+  if (plan.devDependencies.length) await exec(`${install} -D ${plan.devDependencies.join(' ')}`);
   for (const [name, value] of Object.entries(plan.scripts)) {
     await exec(`npm pkg set "scripts.${name}=${value}"`);
   }
@@ -59,6 +69,8 @@ export async function generateFrontend(resolved: ResolvedProject, projectDir: st
 }
 
 interface FrontendPlan {
+  /** Projede Spring Boot backend var mı (başlangıç sayfası ve /api proxy buna göre) */
+  backend: boolean;
   files: Record<string, string>;
   edits: ((dir: string) => void)[];
   dependencies: string[];
@@ -67,8 +79,8 @@ interface FrontendPlan {
   postInstall: string[];
 }
 
-function buildPlan(framework: FrameworkId, options: Set<string>, name: string): FrontendPlan {
-  const plan: FrontendPlan = { files: {}, edits: [], dependencies: [], devDependencies: [], scripts: {}, postInstall: [] };
+function buildPlan(framework: FrameworkId, options: Set<string>, name: string, backend: boolean): FrontendPlan {
+  const plan: FrontendPlan = { backend, files: {}, edits: [], dependencies: [], devDependencies: [], scripts: {}, postInstall: [] };
 
   if (options.has('prettier')) {
     plan.devDependencies.push('prettier');
@@ -78,10 +90,16 @@ function buildPlan(framework: FrameworkId, options: Set<string>, name: string): 
   }
   if (options.has('axios') && framework !== 'angular') {
     plan.dependencies.push('axios');
-    plan.files['src/lib/api.ts'] = `import axios from 'axios'
+    plan.files['src/lib/api.ts'] = backend
+      ? `import axios from 'axios'
 
 /** Backend istekleri için ortak istemci. Vite proxy /api isteklerini backend'e yönlendirir. */
 export const api = axios.create({ baseURL: '/api' })
+`
+      : `import axios from 'axios'
+
+/** Dış API istekleri için ortak istemci. Adresi .env dosyasında VITE_API_URL ile ver. */
+export const api = axios.create({ baseURL: import.meta.env.VITE_API_URL })
 `;
   }
 
@@ -91,62 +109,30 @@ export const api = axios.create({ baseURL: '/api' })
     case 'svelte': sveltePlan(plan, options, name); break;
     case 'angular': angularPlan(plan, options, name); break;
   }
+  if (options.has('vercel')) plan.edits.push((dir) => writeFileSync(join(dir, '..', 'vercel.json'), vercelConfig(framework, name)));
   return plan;
+}
+
+/**
+ * Vercel ayarı proje kökünde durur (depo kökü). Vercel'de "Root Directory" değiştirmeye gerek kalmaz.
+ * rewrites: sayfa yenilenince veya doğrudan bir adres açılınca SPA'nın index.html'i döner.
+ */
+function vercelConfig(framework: FrameworkId, name: string): string {
+  const output = framework === 'angular' ? `frontend/dist/${name}/browser` : 'frontend/dist';
+  return JSON.stringify({
+    $schema: 'https://openapi.vercel.sh/vercel.json',
+    installCommand: 'cd frontend && npm install',
+    buildCommand: 'cd frontend && npm run build',
+    outputDirectory: output,
+    rewrites: [{ source: '/(.*)', destination: '/index.html' }],
+  }, null, 2) + '\n';
 }
 
 // ---------------------------------------------------------------------------
 // Ortak: durum sayfası stilleri ve Vite yapılandırması
 // ---------------------------------------------------------------------------
 
-const STATUS_CSS = `.status-page {
-  max-width: 560px;
-  margin: 15vh auto 0;
-  padding: 0 16px;
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-}
-
-.status-page h1 {
-  font-size: 2rem;
-  font-weight: 700;
-  margin: 0 0 8px;
-}
-
-.status-page .lead {
-  opacity: 0.7;
-  line-height: 1.6;
-}
-
-.status-list {
-  list-style: none;
-  padding: 0;
-  margin: 32px 0 0;
-  border: 1px solid #8884;
-  border-radius: 10px;
-}
-
-.status-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 14px 16px;
-}
-
-.status-row + .status-row {
-  border-top: 1px solid #8884;
-}
-
-.badge {
-  font-size: 0.85rem;
-  padding: 2px 10px;
-  border-radius: 999px;
-}
-
-.badge-ok { background: #1a7f3722; color: #1a7f37; }
-.badge-error { background: #cf222e22; color: #cf222e; }
-.badge-loading { background: #8882; }
-`;
-
-function viteConfig(pluginImport: string, plugin: string, options: Set<string>, alias: boolean): string {
+function viteConfig(pluginImport: string, plugin: string, options: Set<string>, alias: boolean, backend: boolean): string {
   const tailwind = options.has('tailwind');
   const vitest = options.has('vitest');
   return `${vitest ? '/// <reference types="vitest/config" />\n' : ''}${alias ? "import path from 'node:path'\n" : ''}import { defineConfig } from 'vite'
@@ -155,8 +141,8 @@ ${tailwind ? "import tailwindcss from '@tailwindcss/vite'\n" : ''}
 export default defineConfig({
   plugins: [${plugin}${tailwind ? ', tailwindcss()' : ''}],${alias ? `
   resolve: {
-    alias: { '@': path.resolve(__dirname, './src') },
-  },` : ''}
+    alias: { '@': path.resolve(import.meta.dirname, './src') },
+  },` : ''}${backend ? `
   server: {
     // /api istekleri backend'e gider, CORS ayarı gerekmez. Docker içinde API_URL verilir.
     proxy: {
@@ -165,7 +151,7 @@ export default defineConfig({
         changeOrigin: true,
       },
     },
-  },${vitest ? `
+  },` : ''}${vitest ? `
   test: {
     environment: 'jsdom',
   },` : ''}
@@ -194,8 +180,12 @@ function reactPlan(plan: FrontendPlan, options: Set<string>, name: string): void
         s.replace('"files": [],', '"files": [],\n  "compilerOptions": { "paths": { "@/*": ["./src/*"] } },'));
       editText(join(dir, 'tsconfig.app.json'), (s) =>
         s.replace('"compilerOptions": {', '"compilerOptions": {\n    "paths": { "@/*": ["./src/*"] },'));
+      // shadcn'in ürettiği bileşen dosyaları yardımcı fonksiyon da export eder; shadcn'in önerdiği gibi lint dışı
+      if (options.has('eslint')) {
+        editText(join(dir, 'eslint.config.js'), (s) => s.replace("globalIgnores(['dist'])", "globalIgnores(['dist', 'src/components/ui'])"));
+      }
     });
-    plan.postInstall.push('npx -y shadcn@4 init -y --base radix --preset nova --no-monorepo', 'npx -y shadcn@4 add button -y');
+    plan.postInstall.push('npx -y shadcn@4 init -y --base radix --preset nova --no-monorepo', 'npx -y shadcn@4 add button input card badge -y');
   }
   if (options.has('mui')) plan.dependencies.push('@mui/material', '@emotion/react', '@emotion/styled');
   if (options.has('antd')) plan.dependencies.push('antd');
@@ -243,21 +233,16 @@ export type AppDispatch = typeof store.dispatch
 `;
   }
   if (options.has('tanstack-query')) plan.dependencies.push('@tanstack/react-query');
+  if (options.has('motion')) plan.dependencies.push('motion');
+  if (options.has('i18n')) {
+    plan.dependencies.push('i18next', 'react-i18next');
+    plan.files['src/i18n.ts'] = REACT_I18N;
+    Object.assign(plan.files, localeFiles('react'));
+  }
   if (options.has('vitest')) {
     plan.devDependencies.push('vitest', 'jsdom', '@testing-library/react', '@testing-library/jest-dom');
     plan.scripts.test = 'vitest';
-    plan.files['src/pages/StatusPage.test.tsx'] = `import '@testing-library/jest-dom/vitest'
-import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
-import StatusPage from './StatusPage'
-
-describe('StatusPage', () => {
-  it('proje adını gösterir', () => {
-    render(<StatusPage />)
-    expect(screen.getByRole('heading', { name: '${name}' })).toBeInTheDocument()
-  })
-})
-`;
+    plan.files['src/pages/StatusPage.test.tsx'] = reactStartPageTest({ name, options, backend: plan.backend });
   }
 
   // main.tsx: seçilen kütüphanelerin provider'ları
@@ -285,6 +270,7 @@ describe('StatusPage', () => {
     imports.push("import CssBaseline from '@mui/material/CssBaseline'");
     tree = `<>\n      <CssBaseline />\n      ${tree}\n    </>`;
   }
+  if (options.has('i18n')) imports.push("import './i18n'");
   imports.push("import './index.css'", "import App from './App'");
 
   plan.files['src/main.tsx'] = `${imports.join('\n')}
@@ -315,66 +301,10 @@ export default function App() {
 }
 `;
 
-  plan.files['src/pages/StatusPage.tsx'] = `import { useEffect, useState } from 'react'
-import './status.css'
-
-type Status = 'loading' | 'ok' | 'error'
-
-interface HelloResponse {
-  message: string
-  checks: Record<string, 'ok' | 'error'>
-}
-
-const LABELS: Record<Status, string> = {
-  loading: 'kontrol ediliyor…',
-  ok: 'çalışıyor',
-  error: 'ulaşılamıyor',
-}
-
-function StatusRow({ label, status }: { label: string; status: Status }) {
-  return (
-    <li className="status-row">
-      <span>{label}</span>
-      <span className={\`badge badge-\${status}\`}>{LABELS[status]}</span>
-    </li>
-  )
-}
-
-/** Kurulumun çalıştığını gösteren başlangıç sayfası. Kendi sayfalarınla değiştir. */
-export default function StatusPage() {
-  const [backend, setBackend] = useState<Status>('loading')
-  const [checks, setChecks] = useState<Record<string, Status>>({})
-
-  useEffect(() => {
-    fetch('/api/hello')
-      .then((res) => (res.ok ? (res.json() as Promise<HelloResponse>) : Promise.reject(new Error(String(res.status)))))
-      .then((data) => {
-        setBackend('ok')
-        setChecks(data.checks)
-      })
-      .catch(() => setBackend('error'))
-  }, [])
-
-  return (
-    <main className="status-page">
-      <h1>${name}</h1>
-      <p className="lead">
-        Proje hazır. Geliştirmeye <code>frontend/src</code> ve <code>backend/src</code> klasörlerinden başlayabilirsin.
-      </p>
-      <ul className="status-list">
-        <StatusRow label="Frontend" status="ok" />
-        <StatusRow label="Backend" status={backend} />
-        {Object.entries(checks).map(([label, status]) => (
-          <StatusRow key={label} label={label} status={status} />
-        ))}
-      </ul>
-    </main>
-  )
-}
-`;
-  plan.files['src/pages/status.css'] = STATUS_CSS;
+  plan.files['src/pages/StatusPage.tsx'] = reactStartPage({ name, options, backend: plan.backend });
+  if (needsStartPageCss(options)) plan.files['src/pages/status.css'] = START_PAGE_CSS;
   plan.files['src/index.css'] = resetCss(options);
-  plan.files['vite.config.ts'] = viteConfig("import react from '@vitejs/plugin-react'", 'react()', options, shadcn);
+  plan.files['vite.config.ts'] = viteConfig("import react from '@vitejs/plugin-react'", 'react()', options, shadcn, plan.backend);
   plan.edits.push(removeFiles('src/App.css'));
 }
 
@@ -418,16 +348,23 @@ export const useAppStore = defineStore('app', () => {
 `;
   }
   if (options.has('tanstack-query')) plan.dependencies.push('@tanstack/vue-query');
+  const i18n = options.has('i18n');
+  if (i18n) {
+    plan.dependencies.push('vue-i18n');
+    plan.files['src/i18n.ts'] = VUE_I18N;
+    Object.assign(plan.files, localeFiles('vue'));
+  }
   if (options.has('vitest')) {
     plan.devDependencies.push('vitest', 'jsdom', '@vue/test-utils');
     plan.scripts.test = 'vitest';
-    plan.files['src/pages/StatusPage.spec.ts'] = `import { mount } from '@vue/test-utils'
+    plan.files['src/pages/StatusPage.spec.ts'] = `import { shallowMount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
-import StatusPage from './StatusPage.vue'
+${i18n ? "import i18n from '../i18n'\n" : ''}import StatusPage from './StatusPage.vue'
 
 describe('StatusPage', () => {
   it('proje adını gösterir', () => {
-    const wrapper = mount(StatusPage)
+    // UI kütüphanesi bileşenleri taklit edilir, sadece sayfanın kendisi test edilir
+    const wrapper = shallowMount(StatusPage${i18n ? ', { global: { plugins: [i18n] } }' : ''})
     expect(wrapper.get('h1').text()).toBe('${name}')
   })
 })
@@ -447,6 +384,10 @@ describe('StatusPage', () => {
   if (options.has('tanstack-query')) {
     imports.push("import { VueQueryPlugin } from '@tanstack/vue-query'");
     uses.push('app.use(VueQueryPlugin)');
+  }
+  if (i18n) {
+    imports.push("import i18n from './i18n'");
+    uses.push('app.use(i18n)');
   }
   if (options.has('vuetify')) {
     imports.push(
@@ -473,74 +414,26 @@ const app = createApp(App)
 ${uses.join('\n')}${uses.length ? '\n' : ''}app.mount('#app')
 `;
 
-  plan.files['src/App.vue'] = router
-    ? `<script setup lang="ts">
-import { RouterView } from 'vue-router'
+  // Vuetify bileşenleri stillerini v-app içinde alır
+  const page = router ? '<RouterView />' : '<StatusPage />';
+  const body = options.has('vuetify') ? `<v-app>
+    <v-main>
+      ${page}
+    </v-main>
+  </v-app>` : page;
+  plan.files['src/App.vue'] = `<script setup lang="ts">
+${router ? "import { RouterView } from 'vue-router'" : "import StatusPage from './pages/StatusPage.vue'"}
 </script>
 
 <template>
-  <RouterView />
-</template>
-`
-    : `<script setup lang="ts">
-import StatusPage from './pages/StatusPage.vue'
-</script>
-
-<template>
-  <StatusPage />
+  ${body}
 </template>
 `;
 
-  plan.files['src/pages/StatusPage.vue'] = `<script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import './status.css'
-
-type Status = 'loading' | 'ok' | 'error'
-
-const LABELS: Record<Status, string> = {
-  loading: 'kontrol ediliyor…',
-  ok: 'çalışıyor',
-  error: 'ulaşılamıyor',
-}
-
-const backend = ref<Status>('loading')
-const checks = ref<Record<string, Status>>({})
-
-onMounted(async () => {
-  try {
-    const res = await fetch('/api/hello')
-    if (!res.ok) throw new Error(String(res.status))
-    const data = (await res.json()) as { checks: Record<string, Status> }
-    backend.value = 'ok'
-    checks.value = data.checks
-  } catch {
-    backend.value = 'error'
-  }
-})
-</script>
-
-<!-- Kurulumun çalıştığını gösteren başlangıç sayfası. Kendi sayfalarınla değiştir. -->
-<template>
-  <main class="status-page">
-    <h1>${name}</h1>
-    <p class="lead">
-      Proje hazır. Geliştirmeye <code>frontend/src</code> ve <code>backend/src</code> klasörlerinden başlayabilirsin.
-    </p>
-    <ul class="status-list">
-      <li class="status-row"><span>Frontend</span><span class="badge badge-ok">{{ LABELS.ok }}</span></li>
-      <li class="status-row">
-        <span>Backend</span><span :class="['badge', \`badge-\${backend}\`]">{{ LABELS[backend] }}</span>
-      </li>
-      <li v-for="(status, label) in checks" :key="label" class="status-row">
-        <span>{{ label }}</span><span :class="['badge', \`badge-\${status}\`]">{{ LABELS[status] }}</span>
-      </li>
-    </ul>
-  </main>
-</template>
-`;
-  plan.files['src/pages/status.css'] = STATUS_CSS;
+  plan.files['src/pages/StatusPage.vue'] = vueStartPage({ name, options, backend: plan.backend });
+  if (needsStartPageCss(options)) plan.files['src/pages/status.css'] = START_PAGE_CSS;
   plan.files['src/style.css'] = resetCss(options);
-  plan.files['vite.config.ts'] = viteConfig("import vue from '@vitejs/plugin-vue'", 'vue()', options, false);
+  plan.files['vite.config.ts'] = viteConfig("import vue from '@vitejs/plugin-vue'", 'vue()', options, false, plan.backend);
   plan.edits.push(removeFiles('src/components/HelloWorld.vue'));
 }
 
@@ -577,47 +470,10 @@ export function statusLabel(status: Status): string {
   return LABELS[status]
 }
 `;
-  plan.files['src/App.svelte'] = `<script lang="ts">
-  import { onMount } from 'svelte'
-  import { statusLabel, type Status } from './lib/status'
-  import './lib/status.css'
-
-  let backend = $state<Status>('loading')
-  let checks = $state<Record<string, Status>>({})
-
-  onMount(async () => {
-    try {
-      const res = await fetch('/api/hello')
-      if (!res.ok) throw new Error(String(res.status))
-      const data = (await res.json()) as { checks: Record<string, Status> }
-      backend = 'ok'
-      checks = data.checks
-    } catch {
-      backend = 'error'
-    }
-  })
-</script>
-
-<!-- Kurulumun çalıştığını gösteren başlangıç sayfası. Kendi sayfalarınla değiştir. -->
-<main class="status-page">
-  <h1>${name}</h1>
-  <p class="lead">
-    Proje hazır. Geliştirmeye <code>frontend/src</code> ve <code>backend/src</code> klasörlerinden başlayabilirsin.
-  </p>
-  <ul class="status-list">
-    <li class="status-row"><span>Frontend</span><span class="badge badge-ok">{statusLabel('ok')}</span></li>
-    <li class="status-row">
-      <span>Backend</span><span class="badge badge-{backend}">{statusLabel(backend)}</span>
-    </li>
-    {#each Object.entries(checks) as [label, status] (label)}
-      <li class="status-row"><span>{label}</span><span class="badge badge-{status}">{statusLabel(status)}</span></li>
-    {/each}
-  </ul>
-</main>
-`;
-  plan.files['src/lib/status.css'] = STATUS_CSS;
+  plan.files['src/App.svelte'] = svelteStartPage({ name, options, backend: plan.backend });
+  if (needsStartPageCss(options)) plan.files['src/lib/status.css'] = START_PAGE_CSS;
   plan.files['src/app.css'] = resetCss(options);
-  plan.files['vite.config.ts'] = viteConfig("import { svelte } from '@sveltejs/vite-plugin-svelte'", 'svelte()', options, false);
+  plan.files['vite.config.ts'] = viteConfig("import { svelte } from '@sveltejs/vite-plugin-svelte'", 'svelte()', options, false, plan.backend);
   plan.edits.push(removeFiles('src/lib/Counter.svelte'));
 }
 
@@ -638,7 +494,8 @@ function angularPlan(plan: FrontendPlan, options: Set<string>, name: string): vo
   }
 
   plan.files['src/styles.css'] = resetCss(options);
-  plan.files['proxy.conf.mjs'] = `// /api istekleri backend'e gider, CORS ayarı gerekmez. Docker içinde API_URL verilir.
+  if (plan.backend) {
+    plan.files['proxy.conf.mjs'] = `// /api istekleri backend'e gider, CORS ayarı gerekmez. Docker içinde API_URL verilir.
 export default {
   '/api': {
     target: process.env.API_URL ?? 'http://localhost:8080',
@@ -646,13 +503,14 @@ export default {
   },
 }
 `;
-  plan.edits.push((dir) => {
-    const file = join(dir, 'angular.json');
-    const config = JSON.parse(readFileSync(file, 'utf8'));
-    const serve = config.projects[name].architect.serve;
-    serve.options = { ...serve.options, proxyConfig: 'proxy.conf.mjs' };
-    writeFileSync(file, JSON.stringify(config, null, 2) + '\n');
-  });
+    plan.edits.push((dir) => {
+      const file = join(dir, 'angular.json');
+      const config = JSON.parse(readFileSync(file, 'utf8'));
+      const serve = config.projects[name].architect.serve;
+      serve.options = { ...serve.options, proxyConfig: 'proxy.conf.mjs' };
+      writeFileSync(file, JSON.stringify(config, null, 2) + '\n');
+    });
+  }
 
   plan.files['src/app/app.config.ts'] = `import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core'
 import { provideHttpClient, withFetch } from '@angular/common/http'
@@ -682,60 +540,7 @@ import { RouterOutlet } from '@angular/router'
 })
 export class App {}
 `;
-  plan.files['src/app/pages/status-page.ts'] = `import { HttpClient } from '@angular/common/http'
-import { Component, inject, OnInit, signal } from '@angular/core'
-
-type Status = 'loading' | 'ok' | 'error'
-
-const LABELS: Record<Status, string> = {
-  loading: 'kontrol ediliyor…',
-  ok: 'çalışıyor',
-  error: 'ulaşılamıyor',
-}
-
-/** Kurulumun çalıştığını gösteren başlangıç sayfası. Kendi sayfalarınla değiştir. */
-@Component({
-  selector: 'app-status-page',
-  templateUrl: './status-page.html',
-  styleUrl: './status-page.css',
-})
-export class StatusPage implements OnInit {
-  private readonly http = inject(HttpClient)
-
-  protected readonly labels = LABELS
-  protected readonly backend = signal<Status>('loading')
-  protected readonly checks = signal<[string, Status][]>([])
-
-  ngOnInit(): void {
-    this.http.get<{ checks: Record<string, Status> }>('/api/hello').subscribe({
-      next: (data) => {
-        this.backend.set('ok')
-        this.checks.set(Object.entries(data.checks))
-      },
-      error: () => this.backend.set('error'),
-    })
-  }
-}
-`;
-  plan.files['src/app/pages/status-page.html'] = `<main class="status-page">
-  <h1>${name}</h1>
-  <p class="lead">
-    Proje hazır. Geliştirmeye <code>frontend/src</code> ve <code>backend/src</code> klasörlerinden başlayabilirsin.
-  </p>
-  <ul class="status-list">
-    <li class="status-row"><span>Frontend</span><span class="badge badge-ok">{{ labels.ok }}</span></li>
-    <li class="status-row">
-      <span>Backend</span><span class="badge" [class]="'badge-' + backend()">{{ labels[backend()] }}</span>
-    </li>
-    @for (check of checks(); track check[0]) {
-      <li class="status-row">
-        <span>{{ check[0] }}</span><span class="badge" [class]="'badge-' + check[1]">{{ labels[check[1]] }}</span>
-      </li>
-    }
-  </ul>
-</main>
-`;
-  plan.files['src/app/pages/status-page.css'] = STATUS_CSS;
+  Object.assign(plan.files, angularStartPage({ name, options, backend: plan.backend }));
   plan.edits.push(removeFiles('src/app/app.html', 'src/app/app.css', 'src/app/app.spec.ts'));
 }
 
@@ -759,6 +564,27 @@ CMD ${command}
 
 function editText(file: string, transform: (content: string) => string): void {
   writeFileSync(file, transform(readFileSync(file, 'utf8')));
+}
+
+/**
+ * create-vite'in örnek sayfasından kalanlar: kullanılmayan görseller ve "frontend" başlıklı sekme.
+ * Görseller sadece hiçbir kaynak dosyada geçmiyorsa silinir.
+ */
+function cleanupViteScaffold(dir: string, projectName: string): void {
+  editText(join(dir, 'index.html'), (s) =>
+    s.replace(/<title>[^<]*<\/title>/, `<title>${projectName}</title>`).replace('<html lang="en">', '<html lang="tr">'));
+
+  const assetsDir = join(dir, 'src', 'assets');
+  const sources = listFiles(join(dir, 'src')).filter((f) => !f.startsWith(assetsDir));
+  const code = [...sources, join(dir, 'index.html')].map((f) => readFileSync(f, 'utf8')).join('\n');
+  if (!code.includes('assets/')) rmSync(assetsDir, { recursive: true, force: true });
+  if (!code.includes('icons.svg')) rmSync(join(dir, 'public', 'icons.svg'), { force: true });
+}
+
+function listFiles(dir: string): string[] {
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
+    e.isDirectory() ? listFiles(join(dir, e.name)) : [join(dir, e.name)]);
 }
 
 /** Şablonun artık kullanılmayan örnek dosyalarını siler */

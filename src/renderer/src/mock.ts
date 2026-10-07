@@ -2,6 +2,8 @@ import type { InitializrCatalog } from '../../core/initializr';
 import type { GenerateEvent, StepId } from '../../core/types';
 import type { AppApi, Settings } from '../../shared/bridge';
 import snapshot from '../../core/data/initializr-snapshot.json';
+import { resolve } from '../../core/selection';
+import { previewPorts } from './tree';
 
 /**
  * Sadece tarayıcıda tasarım önizlemesi için: Electron olmadan arayüzün tüm durumlarını
@@ -38,13 +40,35 @@ export function createMockApi(): AppApi {
     },
     defaultLocation: async () => 'C:\\Users\\Hazallul\\Projects',
     pickFolder: async () => 'C:\\Users\\Hazallul\\Desktop',
-    isTargetFree: async (sel) => sel.name !== 'devhub',
-    toolStatus: async () => ({ docker: !new URLSearchParams(location.search).has('nodocker'), node: true, git: true }),
+    checkTarget: async (sel) => ({
+      folderTaken: sel.name === 'devhub',
+      dockerConflict: sel.name === 'eski-proje' ? `Docker'da "eski-proje" adlı eski bir projeden kalan veri var.` : null,
+    }),
+    previewPorts: async (sel) => {
+      const taken = new Set([3306, 5173]);
+      const ports = previewPorts(resolve(sel)).map((p) => {
+        let port = p.port;
+        while (taken.has(port)) port++;
+        taken.add(port);
+        return { envName: p.envName, label: p.label, port, preferred: p.port };
+      });
+      return ports;
+    },
+    toolStatus: async () => ({
+      docker: !new URLSearchParams(location.search).has('nodocker'),
+      node: true,
+      git: true,
+      gitIdentity: !new URLSearchParams(location.search).has('nogitid'),
+    }),
     generate: async (sel) => {
       cancelled = false;
       const steps: StepId[] = ['backend', 'frontend', 'docker-files', 'git', 'docker-build', 'services'];
       for (const step of steps) {
         if (cancelled) return { ok: false, cancelled: true, message: 'İşlem iptal edildi' };
+        if (step === 'backend' && sel.backend.enabled === false) {
+          emit({ type: 'step', step, status: 'skipped', message: 'Sadece frontend projesi' });
+          continue;
+        }
         if (step === 'frontend' && !sel.frontend.framework) {
           emit({ type: 'step', step, status: 'skipped', message: 'Frontend seçilmedi' });
           continue;
@@ -64,13 +88,36 @@ export function createMockApi(): AppApi {
       const dir = `${sel.location}\\${sel.name}`;
       return {
         ok: true,
-        result: { projectDir: dir, ports: [], started: true, warnings: [] },
+        result: {
+          projectDir: dir,
+          ports: [],
+          started: true,
+          warnings: [],
+          credentials: [
+            { key: 'DB_USER', value: 'app' },
+            { key: 'DB_PASSWORD', value: 'k3Jd8sPq2mXz7RtLw9aB' },
+            { key: 'APP_USER', value: 'admin' },
+            { key: 'APP_PASSWORD', value: 'Vn4hT8cQ2wZp6KmRs3yE' },
+          ],
+        },
         links: [
           ...(sel.frontend.framework ? [{ label: 'Uygulama', url: 'http://localhost:5173' }] : []),
           { label: 'Backend API', url: 'http://localhost:8080/api/hello' },
           { label: 'Swagger UI', url: 'http://localhost:8080/swagger-ui.html' },
           { label: 'Adminer', url: 'http://localhost:8090' },
         ],
+      };
+    },
+    startProject: async (sel) => {
+      for (const step of ['docker-build', 'services'] as StepId[]) {
+        emit({ type: 'step', step, status: 'running' });
+        await wait(800);
+        emit({ type: 'step', step, status: 'done' });
+      }
+      return {
+        ok: true,
+        result: { projectDir: `${sel.location}\\${sel.name}`, ports: [], started: true, warnings: [], credentials: [] },
+        links: [{ label: 'Backend API', url: 'http://localhost:8080/api/hello' }],
       };
     },
     cancelGenerate: async () => {

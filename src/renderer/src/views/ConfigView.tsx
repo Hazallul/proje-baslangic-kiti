@@ -10,10 +10,11 @@ import { findService, SERVICES } from '../../../core/catalog/services';
 import { useEffect, useRef, useState } from 'react';
 import type { InitializrCatalog } from '../../../core/initializr';
 import {
-  availableServices, PRESETS, setFramework, setNeed, setSqlDatabase, suggestedServices, toggleFrontendOption,
+  availableServices, hasBackend, PRESETS, projectKindOf, setFramework, setNeed, setProjectKind, setSqlDatabase,
+  suggestedServices, toggleFrontendOption,
   toggleNoSqlDatabase, toggleService, type ValidationIssue,
 } from '../../../core/selection';
-import type { FrameworkId, ResolvedProject, Selection } from '../../../core/types';
+import type { FrameworkId, ProjectKind, ResolvedProject, Selection } from '../../../core/types';
 import type { SavedTemplate, ToolStatus } from '../../../shared/bridge';
 import { Checkbox, cx, FieldLabel, HelpPopover, inputClass, Mark, Section, Segmented, Tag, Toggle } from '../ui';
 import { PackagesSection } from './PackagesSection';
@@ -24,6 +25,12 @@ const NEED_ICONS: Record<string, LucideIcon> = {
   shield: Shield, 'check-check': CheckCheck, 'book-open': BookOpen, zap: Zap, 'messages-square': MessagesSquare,
   activity: Activity, mail: Mail, radio: Radio, 'share-2': Share2, clock: Clock,
 };
+
+const PROJECT_KINDS: { value: ProjectKind; label: string; hint: string }[] = [
+  { value: 'fullstack', label: 'Fullstack', hint: 'Spring Boot backend ve frontend, aynı Docker Compose içinde.' },
+  { value: 'backend', label: 'Sadece backend', hint: 'Spring Boot API; arayüz yok.' },
+  { value: 'frontend', label: 'Sadece frontend', hint: 'Backend olmadan bir site: portfolyo, tanıtım sayfası gibi. Vercel\'e yayınlanabilir.' },
+];
 
 const FRAMEWORK_DETAIL: Record<FrameworkId, string> = {
   react: '19 · TS · Vite',
@@ -38,7 +45,8 @@ export interface ConfigViewProps {
   resolved: ResolvedProject;
   catalog: InitializrCatalog | null;
   issues: ValidationIssue[];
-  targetTaken: boolean;
+  /** Klasör dolu veya Docker'da aynı adlı proje var */
+  targetIssue: string | null;
   tools: ToolStatus | null;
   activePreset: string | null;
   templates: SavedTemplate[];
@@ -83,6 +91,7 @@ export function ConfigView(props: ConfigViewProps) {
   const pv: PreviewControls = { wide, setHoverKit, setHoverTarget, pin: setPinned };
   const sectionProps: SectionProps = { ...props, pv };
   const goToFrontend = () => document.getElementById('frontend')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const backend = hasBackend(props.sel);
 
   return (
     // Genişlik yetince önizleme formun solunda sabit durur; dar pencerede Frontend bölümünün içine iner
@@ -104,12 +113,20 @@ export function ConfigView(props: ConfigViewProps) {
         )}
         <div className="min-w-0 max-w-[720px] flex-1 pb-10">
           <ProjectSection {...sectionProps} />
-          <PresetSection {...sectionProps} />
-          <NeedsSection {...sectionProps} />
-          <DatabaseSection {...sectionProps} />
+          {backend && (
+            <>
+              <PresetSection {...sectionProps} />
+              <NeedsSection {...sectionProps} />
+              <DatabaseSection {...sectionProps} />
+            </>
+          )}
           <FrontendSection {...sectionProps} hoverKit={hoverKit} />
-          <ServicesSection {...sectionProps} />
-          <PackagesSection sel={props.sel} update={props.update} resolved={props.resolved} catalog={props.catalog} />
+          {backend && (
+            <>
+              <ServicesSection {...sectionProps} />
+              <PackagesSection sel={props.sel} update={props.update} resolved={props.resolved} catalog={props.catalog} />
+            </>
+          )}
           <OptionsSection {...sectionProps} />
         </div>
       </div>
@@ -119,17 +136,19 @@ export function ConfigView(props: ConfigViewProps) {
 
 // ---------------------------------------------------------------------------
 
-function ProjectSection({ sel, update, issues, targetTaken, catalog, onPickFolder }: SectionProps) {
+function ProjectSection({ sel, update, issues, targetIssue, catalog, onPickFolder }: SectionProps) {
   const nameIssue = issues.find((i) => i.field === 'name');
   const groupIssue = issues.find((i) => i.field === 'groupId');
-  const nameError = nameIssue?.message ?? (targetTaken ? `"${sel.name}" klasörü bu konumda zaten var ve boş değil` : null);
+  const locationIssue = issues.find((i) => i.field === 'location');
+  const nameError = nameIssue?.message ?? targetIssue;
   const javaVersions = catalog?.javaVersions ?? ['17', '21', '25'];
+  const backend = hasBackend(sel);
 
   return (
     <Section
       id="proje"
       title="Proje"
-      meta={catalog && (
+      meta={backend && catalog && (
         <span className="flex items-center gap-2">
           Spring Boot <span className="font-mono text-fg">{catalog.bootVersion}</span>
           {catalog.source !== 'live' && <Tag tone="warn">{catalog.source === 'cache' ? 'önbellekten' : 'çevrimdışı katalog'}</Tag>}
@@ -154,16 +173,21 @@ function ProjectSection({ sel, update, issues, targetTaken, catalog, onPickFolde
         </div>
 
         <div>
-          <FieldLabel>Konum</FieldLabel>
+          <FieldLabel htmlFor="location">Konum</FieldLabel>
           <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={onPickFolder}
-              className={cx(inputClass, 'flex items-center gap-2 text-left font-mono text-[12.5px]')}
-            >
-              <FolderOpen size={14} className="shrink-0 text-fg-3" />
-              <span className="truncate">{sel.location || 'Klasör seç'}</span>
-            </button>
+            <div className="relative min-w-0 flex-1">
+              <FolderOpen size={14} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-fg-3" />
+              <input
+                id="location"
+                spellCheck={false}
+                value={sel.location}
+                placeholder="C:\Projeler"
+                // Explorer'daki "Yol olarak kopyala" tırnaklı yapıştırır; tırnakları at
+                onChange={(e) => update((s) => ({ ...s, location: e.target.value.replace(/"/g, '') }))}
+                className={cx(inputClass, 'pl-8 font-mono text-[12.5px]', locationIssue && 'border-danger focus:border-danger focus:ring-danger-soft')}
+                aria-invalid={!!locationIssue}
+              />
+            </div>
             <button
               type="button"
               onClick={onPickFolder}
@@ -172,14 +196,27 @@ function ProjectSection({ sel, update, issues, targetTaken, catalog, onPickFolde
               Gözat…
             </button>
           </div>
-          {sel.location && (
+          {locationIssue ? (
+            <p className="mt-1.5 text-[12px] text-danger">{locationIssue.message}</p>
+          ) : (
             <p className="mt-1.5 truncate font-mono text-[11.5px] text-fg-3">
-              → {sel.location}\<span className="text-fg-2">{sel.name}</span>
+              → {sel.location.replace(/[\\/]+$/, '')}\<span className="text-fg-2">{sel.name}</span>
             </p>
           )}
         </div>
 
-        <div className="flex flex-wrap items-end gap-3">
+        <div>
+          <FieldLabel>Proje türü</FieldLabel>
+          <Segmented
+            label="Proje türü"
+            value={projectKindOf(sel)}
+            onChange={(kind) => update((s) => setProjectKind(s, kind))}
+            options={PROJECT_KINDS}
+          />
+          <p className="mt-1.5 text-[12px] text-fg-3">{PROJECT_KINDS.find((k) => k.value === projectKindOf(sel))!.hint}</p>
+        </div>
+
+        {backend && <div className="flex flex-wrap items-end gap-3">
           <div className="min-w-[220px] flex-1">
             <FieldLabel htmlFor="group">Group ID</FieldLabel>
             <input
@@ -210,7 +247,7 @@ function ProjectSection({ sel, update, issues, targetTaken, catalog, onPickFolde
               options={[{ value: 'maven', label: 'Maven' }, { value: 'gradle', label: 'Gradle' }]}
             />
           </div>
-        </div>
+        </div>}
       </div>
     </Section>
   );
@@ -450,21 +487,28 @@ function DbCard({ selected, radio, locked, onClick, mark, title, detail }: {
 function FrontendSection({ sel, update, pv, hoverKit }: SectionProps & { hoverKit: string | null }) {
   const pinFrontend = () => pv.pin({ kind: 'frontend' });
   const fw = sel.frontend.framework ? findFramework(sel.frontend.framework) : null;
+  // Sadece frontend projesinde framework seçmek zorunlu, "Yok" seçeneği gösterilmez.
+  // Yayınlama (Vercel) sadece backend'siz projede gösterilir: Vercel Spring Boot çalıştırmaz.
+  const backend = hasBackend(sel);
   const groups = fw
-    ? (Object.keys(OPTION_GROUPS) as OptionGroup[]).filter((g) => fw.options.some((o) => o.group === g))
+    ? (Object.keys(OPTION_GROUPS) as OptionGroup[])
+      .filter((g) => fw.options.some((o) => o.group === g))
+      .filter((g) => !(backend && g === 'deploy'))
     : [];
 
   return (
     <Section id="frontend" title="Frontend" meta={fw ? `${sel.frontend.options.length} seçenek` : 'Sadece backend'}>
-      <div role="radiogroup" aria-label="Frontend framework" className="grid grid-cols-5 gap-2">
-        <DbCard
-          selected={!fw}
-          radio
-          onClick={() => update((s) => setFramework(s, null))}
-          mark={<span className="flex h-7 w-7 items-center justify-center rounded-[6px] border border-dashed border-line-strong text-fg-3"><Slash size={13} /></span>}
-          title="Yok"
-          detail="sadece API"
-        />
+      <div role="radiogroup" aria-label="Frontend framework" className={cx('grid gap-2', backend ? 'grid-cols-5' : 'grid-cols-4')}>
+        {backend && (
+          <DbCard
+            selected={!fw}
+            radio
+            onClick={() => update((s) => setFramework(s, null))}
+            mark={<span className="flex h-7 w-7 items-center justify-center rounded-[6px] border border-dashed border-line-strong text-fg-3"><Slash size={13} /></span>}
+            title="Yok"
+            detail="sadece API"
+          />
+        )}
         {FRAMEWORKS.map((f) => (
           <HelpPopover key={f.id} title={f.label} help={FRAMEWORK_HELP[f.id]} className="flex min-w-0 [&>button]:w-full">
           <DbCard
@@ -539,7 +583,7 @@ function FrontendSection({ sel, update, pv, hoverKit }: SectionProps & { hoverKi
       )}
 
       {!pv.wide && (
-        <UiPreview framework={sel.frontend.framework} options={sel.frontend.options} hoverKit={hoverKit} projectName={sel.name} />
+        <UiPreview framework={sel.frontend.framework} options={sel.frontend.options} hoverKit={hoverKit} projectName={sel.name} backend={backend} />
       )}
     </Section>
   );
@@ -632,6 +676,7 @@ function ServicesSection({ sel, update, resolved, pv }: SectionProps) {
 
 function OptionsSection({ sel, update, tools }: SectionProps) {
   const dockerOff = tools && !tools.docker;
+  const needsAuthor = Boolean(sel.git && tools && tools.git && !tools.gitIdentity);
   return (
     <Section id="secenekler" title="Seçenekler">
       <ul className="divide-y divide-line rounded-lg border border-line bg-surface">
@@ -641,6 +686,30 @@ function OptionsSection({ sel, update, tools }: SectionProps) {
           checked={sel.git}
           onChange={(v) => update((s) => ({ ...s, git: v }))}
         />
+        {needsAuthor && (
+          <li className="px-3.5 py-3">
+            <div className="text-[12px] text-warn">
+              Bu bilgisayarda git için ad ve e-posta tanımlı değil; ilk commit için gerekli. Sadece bu projeye yazılır.
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <input
+                aria-label="Git adı"
+                placeholder="Ad Soyad"
+                value={sel.gitAuthor?.name ?? ''}
+                onChange={(e) => update((s) => ({ ...s, gitAuthor: { name: e.target.value, email: s.gitAuthor?.email ?? '' } }))}
+                className={inputClass}
+              />
+              <input
+                aria-label="Git e-postası"
+                type="email"
+                placeholder="ornek@mail.com"
+                value={sel.gitAuthor?.email ?? ''}
+                onChange={(e) => update((s) => ({ ...s, gitAuthor: { name: s.gitAuthor?.name ?? '', email: e.target.value } }))}
+                className={inputClass}
+              />
+            </div>
+          </li>
+        )}
         <OptionRow
           title="Oluşturunca Docker ile başlat"
           detail={dockerOff

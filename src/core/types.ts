@@ -11,11 +11,15 @@ export interface Selection {
   /** Ek Docker servisleri (veritabanı container'ları bunlara dahil değil, otomatik eklenir) */
   services: string[];
   git: boolean;
+  /** Genel git kimliği yoksa ilk commit için kullanılır (sadece bu depoya yazılır) */
+  gitAuthor?: { name: string; email: string };
   /** Oluşturduktan sonra docker compose ile başlat */
   start: boolean;
 }
 
 export interface BackendSelection {
+  /** Spring Boot backend oluşturulsun mu (false = sadece frontend projesi) */
+  enabled: boolean;
   groupId: string;
   javaVersion: string;
   buildTool: BuildTool;
@@ -26,6 +30,9 @@ export interface BackendSelection {
 }
 
 export type BuildTool = 'maven' | 'gradle';
+
+/** Arayüzdeki "Proje türü" seçimi; backend.enabled ve frontend.framework'ten hesaplanır */
+export type ProjectKind = 'fullstack' | 'backend' | 'frontend';
 
 export interface DatabaseSelection {
   /** En fazla bir ilişkisel veritabanı (Spring tek datasource otomatik yapılandırır) */
@@ -79,4 +86,6 @@ export interface GenerateResult {
   ports: PortAssignment[];
   started: boolean;
   warnings: string[];
+  /** .env'e yazılan kullanıcı adları ve şifreler (portlar hariç) */
+  credentials: { key: string; value: string }[];
 }

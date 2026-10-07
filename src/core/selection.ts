@@ -2,16 +2,22 @@ import { DATABASES, findDatabase } from './catalog/databases.js';
 import { findFramework, OPTION_GROUPS } from './catalog/frontend.js';
 import { findNeed, findVariant, NEEDS } from './catalog/needs.js';
 import { findService, SERVICES, type ServiceDef } from './catalog/services.js';
-import type { FrameworkId, ResolvedProject, Selection } from './types.js';
+import type { FrameworkId, ProjectKind, ResolvedProject, Selection } from './types.js';
 
 export const NAME_PATTERN = /^[a-z][a-z0-9-]*$/;
 export const GROUP_PATTERN = /^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$/;
+
+/** Java paket adında kullanılamayan kelimeler (proje adı paketin son parçası olur) */
+const JAVA_KEYWORDS = new Set(('abstract assert boolean break byte case catch char class const continue default do double '
+  + 'else enum extends false final finally float for goto if implements import instanceof int interface long native new '
+  + 'null package private protected public return short static strictfp super switch synchronized this throw throws '
+  + 'transient true try void volatile while').split(' '));
 
 export function defaultSelection(): Selection {
   return {
     name: 'my-app',
     location: '',
-    backend: { groupId: 'com.example', javaVersion: '21', buildTool: 'maven', dependencies: [], libraries: [] },
+    backend: { enabled: true, groupId: 'com.example', javaVersion: '21', buildTool: 'maven', dependencies: [], libraries: [] },
     needs: {},
     database: { sql: null, nosql: [], migration: 'flyway' },
     frontend: { framework: null, options: [] },
@@ -86,7 +92,7 @@ export function applyPreset(sel: Selection, presetId: string): Selection {
 
   let next: Selection = {
     ...sel,
-    backend: { ...sel.backend, dependencies: [...preset.dependencies], libraries: [] },
+    backend: { ...sel.backend, enabled: true, dependencies: [...preset.dependencies], libraries: [] },
     needs: {},
     frontend: { framework: preset.frontend.framework, options: [...preset.frontend.options] },
     services: [],
@@ -95,6 +101,33 @@ export function applyPreset(sel: Selection, presetId: string): Selection {
     next = setNeed(next, needId, variantId);
   }
   return next;
+}
+
+// ---------------------------------------------------------------------------
+// Proje türü
+// ---------------------------------------------------------------------------
+
+/** Projede Spring Boot backend var mı? (Eski kayıtlarda alan yoksa var sayılır) */
+export function hasBackend(sel: Selection): boolean {
+  return sel.backend.enabled !== false;
+}
+
+export function projectKindOf(sel: Selection): ProjectKind {
+  if (!hasBackend(sel)) return 'frontend';
+  return sel.frontend.framework ? 'fullstack' : 'backend';
+}
+
+/**
+ * Proje türünü değiştirir; frontend gerekiyorsa ve seçili değilse React seçilir.
+ * Yayınlama seçenekleri (Vercel) sadece backend'siz projede anlamlı, backend açılınca kaldırılır.
+ */
+export function setProjectKind(sel: Selection, kind: ProjectKind): Selection {
+  const backend = { ...sel.backend, enabled: kind !== 'frontend' };
+  if (kind === 'backend') return { ...sel, backend, frontend: { framework: null, options: [] } };
+  const framework = sel.frontend.framework ?? 'react';
+  const deploy = new Set(findFramework(framework).options.filter((o) => o.group === 'deploy').map((o) => o.id));
+  const options = kind === 'frontend' ? sel.frontend.options : sel.frontend.options.filter((o) => !deploy.has(o));
+  return { ...sel, backend, frontend: { framework, options } };
 }
 
 // ---------------------------------------------------------------------------
@@ -214,6 +247,19 @@ export function resolve(sel: Selection): ResolvedProject {
     if (!sources[id]) sources[id] = source;
   };
 
+  // Sadece frontend projesinde backend tarafından hiçbir şey üretilmez
+  if (!hasBackend(sel)) {
+    return {
+      selection: sel,
+      dependencies: [],
+      dependencySources: {},
+      libraries: [],
+      databases: [],
+      services: [],
+      frontendOptions: sel.frontend.options,
+    };
+  }
+
   add('web', 'Temel');
 
   const databases = new Set<string>();
@@ -260,7 +306,9 @@ export function resolve(sel: Selection): ResolvedProject {
 export function suggestedServices(resolved: ResolvedProject): ServiceDef[] {
   return SERVICES.filter((service) => {
     if (resolved.services.includes(service.id)) return false;
-    const { dependencies = [], databases = [] } = service.suggestWhen;
+    const { dependencies = [], databases = [], unlessNeeds = {} } = service.suggestWhen;
+    const needs = resolved.selection.needs;
+    if (Object.entries(unlessNeeds).some(([need, variants]) => variants.includes(needs[need]))) return false;
     return dependencies.some((d) => resolved.dependencies.includes(d))
       || databases.some((d) => resolved.databases.includes(d));
   });
@@ -272,7 +320,7 @@ export function availableServices(resolved: ResolvedProject): ServiceDef[] {
 }
 
 export interface ValidationIssue {
-  field: 'name' | 'location' | 'groupId';
+  field: 'name' | 'location' | 'groupId' | 'frontend';
   message: string;
 }
 
@@ -281,13 +329,23 @@ export function validate(sel: Selection): ValidationIssue[] {
   if (!sel.name) issues.push({ field: 'name', message: 'Proje adı boş olamaz' });
   else if (!NAME_PATTERN.test(sel.name)) {
     issues.push({ field: 'name', message: 'Küçük harfle başlamalı; sadece küçük harf, rakam ve tire kullanılabilir' });
+  } else if (sel.name.endsWith('-')) {
+    issues.push({ field: 'name', message: 'Proje adı tireyle bitemez' });
+  } else if (JAVA_KEYWORDS.has(sel.name.replace(/-/g, ''))) {
+    issues.push({ field: 'name', message: `"${sel.name}" Java'da ayrılmış bir kelime, paket adı olamaz` });
   }
   if (!sel.location) issues.push({ field: 'location', message: 'Projenin oluşturulacağı klasörü seç' });
   else if (!/^([a-zA-Z]:[\\/]|\/|\\\\)/.test(sel.location)) {
     issues.push({ field: 'location', message: 'Konum tam bir klasör yolu olmalı (örn. C:\\Projeler)' });
   }
+  if (!hasBackend(sel) && !sel.frontend.framework) {
+    issues.push({ field: 'frontend', message: 'Sadece frontend projesi için bir framework seç' });
+  }
+  if (!hasBackend(sel)) return issues;
   if (!GROUP_PATTERN.test(sel.backend.groupId)) {
     issues.push({ field: 'groupId', message: 'Geçerli bir Java paket adı olmalı, örn. com.sirket' });
+  } else if (sel.backend.groupId.split('.').some((part) => JAVA_KEYWORDS.has(part))) {
+    issues.push({ field: 'groupId', message: "Group ID Java'da ayrılmış bir kelime içeriyor (ör. new, class)" });
   }
   return issues;
 }

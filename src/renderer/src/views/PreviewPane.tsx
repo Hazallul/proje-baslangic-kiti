@@ -19,7 +19,7 @@ function countFiles(node: TreeNode): number {
   return node.children ? node.children.reduce((n, c) => n + countFiles(c), 0) : 1;
 }
 
-export function PreviewPane({ resolved }: { resolved: ResolvedProject }) {
+export function PreviewPane({ resolved, livePorts }: { resolved: ResolvedProject; livePorts: Record<string, number> | null }) {
   const tree = buildTree(resolved);
   const lines = flatten(tree);
   const ports = previewPorts(resolved);
@@ -54,16 +54,24 @@ export function PreviewPane({ resolved }: { resolved: ResolvedProject }) {
           <span className="font-mono text-[11px] text-fg-3">localhost</span>
         </div>
         <ul className="space-y-1.5">
-          {ports.map((p) => (
-            <li key={`${p.label}-${p.port}`} className="flex items-center gap-2 text-[12.5px]">
-              <span className="h-1 w-1 shrink-0 rounded-full bg-fg-3" />
-              <span className="shrink-0 font-medium text-fg">{p.label}</span>
-              <span className="min-w-0 flex-1 truncate text-fg-3">{p.detail}</span>
-              <span className="font-mono text-fg-2 tabular">:{p.port}</span>
-            </li>
-          ))}
+          {ports.map((p) => {
+            const live = livePorts?.[p.envName];
+            const moved = live !== undefined && live !== p.port;
+            return (
+              <li key={`${p.label}-${p.port}`} className="flex items-center gap-2 text-[12.5px]">
+                <span className="h-1 w-1 shrink-0 rounded-full bg-fg-3" />
+                <span className="shrink-0 font-medium text-fg">{p.label}</span>
+                <span className="min-w-0 flex-1 truncate text-fg-3">{moved ? `${p.port} dolu` : p.detail}</span>
+                <span className={moved ? 'font-mono text-warn tabular' : 'font-mono text-fg-2 tabular'}>:{live ?? p.port}</span>
+              </li>
+            );
+          })}
         </ul>
-        <p className="mt-2.5 text-[11.5px] text-fg-3">Port doluysa oluştururken sıradaki boş port seçilir.</p>
+        <p className="mt-2.5 text-[11.5px] text-fg-3">
+          {ports.some((p) => livePorts?.[p.envName] !== undefined && livePorts[p.envName] !== p.port)
+            ? 'Dolu portlar yerine sıradaki boş port kullanılacak (başka bir proje çalışıyor).'
+            : 'Port doluysa oluştururken sıradaki boş port seçilir.'}
+        </p>
       </div>
     </aside>
   );

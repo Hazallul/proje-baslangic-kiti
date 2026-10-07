@@ -1,5 +1,5 @@
 import type { InitializrCatalog } from '../core/initializr.js';
-import type { GenerateEvent, GenerateResult, Selection } from '../core/types.js';
+import type { GenerateEvent, GenerateResult, PortAssignment, Selection } from '../core/types.js';
 
 export interface SavedTemplate {
   id: string;
@@ -17,6 +17,15 @@ export interface ToolStatus {
   docker: boolean;
   node: boolean;
   git: boolean;
+  /** git config --global user.name / user.email tanımlı mı */
+  gitIdentity: boolean;
+}
+
+export interface TargetCheck {
+  /** Aynı adla dolu bir klasör var */
+  folderTaken: boolean;
+  /** Docker'da aynı adla container veya volume varsa açıklaması */
+  dockerConflict: string | null;
 }
 
 export type GenerateOutcome =
@@ -30,9 +39,13 @@ export interface AppApi {
   saveSettings(settings: Settings): Promise<void>;
   defaultLocation(): Promise<string>;
   pickFolder(current: string): Promise<string | null>;
-  isTargetFree(selection: Selection): Promise<boolean>;
+  checkTarget(selection: Selection): Promise<TargetCheck>;
+  /** Şu anki boş portlara göre oluşturulunca kullanılacak portlar */
+  previewPorts(selection: Selection): Promise<PortAssignment[]>;
   toolStatus(): Promise<ToolStatus>;
   generate(selection: Selection): Promise<GenerateOutcome>;
+  /** Dosyaları oluşmuş projeyi Docker'da tekrar derleyip başlatır */
+  startProject(selection: Selection): Promise<GenerateOutcome>;
   cancelGenerate(): Promise<void>;
   onGenerateEvent(listener: (event: GenerateEvent) => void): () => void;
   openUrl(url: string): Promise<void>;
@@ -50,9 +63,11 @@ export const IPC = {
   saveSettings: 'settings:save',
   defaultLocation: 'app:default-location',
   pickFolder: 'dialog:pick-folder',
-  isTargetFree: 'project:is-target-free',
+  checkTarget: 'project:check-target',
+  previewPorts: 'project:preview-ports',
   toolStatus: 'tools:status',
   generate: 'project:generate',
+  startProject: 'project:start',
   cancelGenerate: 'project:cancel',
   generateEvent: 'project:event',
   openUrl: 'shell:open-url',

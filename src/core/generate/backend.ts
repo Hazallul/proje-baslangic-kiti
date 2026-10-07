@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { type EnvVar, findDatabase } from '../catalog/databases.js';
 import { findLibrary } from '../catalog/libraries.js';
 import { downloadProject, latestMavenVersion } from '../initializr.js';
+import { hasBackend } from '../selection.js';
 import type { ResolvedProject } from '../types.js';
 import { packageNameOf, writeFiles } from '../util.js';
 
@@ -58,7 +59,7 @@ function addLibrary(backendDir: string, buildTool: string, groupId: string, arti
 
 /** Güvenlik seçimine göre .env ve backend container'ına eklenecek değişkenler */
 export function securityEnv(resolved: ResolvedProject): { env: EnvVar[]; backendEnv: Record<string, string> } {
-  const variant = resolved.selection.needs.security;
+  const variant = hasBackend(resolved.selection) ? resolved.selection.needs.security : undefined;
   if (variant === 'basic' || variant === 'jwt') {
     const env: EnvVar[] = [
       { key: 'APP_USER', value: 'admin' },
@@ -74,7 +75,7 @@ export function securityEnv(resolved: ResolvedProject): { env: EnvVar[]; backend
   return { env: [], backendEnv: {} };
 }
 
-function backendFiles(resolved: ResolvedProject, pkg: string): Record<string, string> {
+export function backendFiles(resolved: ResolvedProject, pkg: string): Record<string, string> {
   const sel = resolved.selection;
   const javaDir = `backend/src/main/java/${pkg.replaceAll('.', '/')}`;
   const files: Record<string, string> = {
@@ -149,7 +150,14 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 function applicationProperties(resolved: ResolvedProject): string {
   const sel = resolved.selection;
   const deps = new Set(resolved.dependencies);
-  const sections: string[][] = [[`spring.application.name=${sel.name}`, 'server.port=8080']];
+  const sections: string[][] = [
+    [`spring.application.name=${sel.name}`, 'server.port=8080'],
+    [
+      "# Backend IDE'den çalıştırılınca şifre ve portlar proje kökündeki .env dosyasından okunur.",
+      '# Docker içinde bu dosya yoktur; değerleri compose.yaml verir.',
+      'spring.config.import=optional:file:.env[.properties],optional:file:../.env[.properties]',
+    ],
+  ];
 
   // Docker içinde compose.yaml ortam değişkenlerini verir; yerelde localhost varsayılanları geçerli
   for (const dbId of resolved.databases) {
@@ -165,18 +173,19 @@ function applicationProperties(resolved: ResolvedProject): string {
   }
 
   if (deps.has('kafka')) {
-    sections.push(['# Kafka', 'spring.kafka.bootstrap-servers=${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}']);
+    sections.push(['# Kafka', 'spring.kafka.bootstrap-servers=${KAFKA_BOOTSTRAP_SERVERS:localhost:${KAFKA_PORT:9094}}']);
   }
   if (deps.has('rabbitmq')) {
     sections.push([
       '# RabbitMQ',
       'spring.rabbitmq.host=${RABBITMQ_HOST:localhost}',
+      'spring.rabbitmq.port=${RABBITMQ_PORT:5672}',
       'spring.rabbitmq.username=${RABBITMQ_USER:guest}',
       'spring.rabbitmq.password=${RABBITMQ_PASSWORD:guest}',
     ]);
   }
   if (deps.has('mail')) {
-    sections.push(['# E-posta', 'spring.mail.host=${MAIL_HOST:localhost}', 'spring.mail.port=${MAIL_PORT:1025}']);
+    sections.push(['# E-posta', 'spring.mail.host=${MAIL_HOST:localhost}', 'spring.mail.port=${MAIL_PORT:${MAILPIT_SMTP_PORT:1025}}']);
   }
   if (deps.has('actuator')) {
     const endpoints = deps.has('prometheus') ? 'health,info,prometheus' : 'health,info';
@@ -201,7 +210,7 @@ function applicationProperties(resolved: ResolvedProject): string {
   if (security === 'keycloak') {
     sections.push([
       '# Keycloak tokenlarını doğrulamak için açık anahtarlar',
-      `spring.security.oauth2.resourceserver.jwt.jwk-set-uri=\${JWT_JWK_SET_URI:http://localhost:8180/realms/${sel.name}/protocol/openid-connect/certs}`,
+      `spring.security.oauth2.resourceserver.jwt.jwk-set-uri=\${JWT_JWK_SET_URI:http://localhost:\${KEYCLOAK_PORT:8180}/realms/${sel.name}/protocol/openid-connect/certs}`,
     ]);
   }
 
@@ -249,6 +258,7 @@ function helloController(pkg: string, databases: string[]): string {
     ...checks.flatMap((c) => c.imports),
     'org.springframework.web.bind.annotation.GetMapping',
     'org.springframework.web.bind.annotation.RequestMapping',
+    'org.springframework.web.bind.annotation.RequestParam',
     'org.springframework.web.bind.annotation.RestController',
   ];
   const javaImports = imports.filter((i) => i.startsWith('java.'));
@@ -276,12 +286,13 @@ ${fields}
 ${ctorBody}
     }
 ` : ''}
+    /** GET /api/hello veya /api/hello?name=Ayşe → kurulum durumu ve selamlama mesajı */
     @GetMapping("/hello")
-    public Map<String, Object> hello() {
+    public Map<String, Object> hello(@RequestParam(required = false) String name) {
         Map<String, String> checks = new LinkedHashMap<>();
 ${checkLines}
         Map<String, Object> body = new LinkedHashMap<>();
-        body.put("message", "Backend çalışıyor");
+        body.put("message", name == null || name.isBlank() ? "Backend çalışıyor" : "Merhaba, " + name.strip() + "!");
         body.put("checks", checks);
         body.put("time", Instant.now().toString());
         return body;

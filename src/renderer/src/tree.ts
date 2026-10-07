@@ -1,6 +1,7 @@
 import { findDatabase } from '../../core/catalog/databases';
 import { findFramework } from '../../core/catalog/frontend';
 import { findService } from '../../core/catalog/services';
+import { hasBackend } from '../../core/selection';
 import type { ResolvedProject } from '../../core/types';
 
 export interface TreeNode {
@@ -29,7 +30,8 @@ export function buildTree(resolved: ResolvedProject): TreeNode {
   const security = sel.needs.security;
   const sql = sel.database.sql ? findDatabase(sel.database.sql) : null;
 
-  const backend = dir('backend', [
+  const withBackend = hasBackend(sel);
+  const backend = withBackend && dir('backend', [
     dir(`src/main/java/${pkgPath}`, [
       file(`${pascal(name)}Application.java`),
       dir('api', [file('HelloController.java'), security === 'jwt' && file('AuthController.java', 'token')]),
@@ -46,6 +48,8 @@ export function buildTree(resolved: ResolvedProject): TreeNode {
 
   const fw = sel.frontend.framework;
   const opts = new Set(resolved.frontendOptions);
+  const proxyNote = withBackend ? '/api → backend' : undefined;
+  const locales = opts.has('i18n') && dir('locales', [file('tr.ts'), file('en.ts')]);
   let frontend: TreeNode | null = null;
   if (fw === 'react') {
     frontend = dir('frontend', [
@@ -56,10 +60,12 @@ export function buildTree(resolved: ResolvedProject): TreeNode {
         opts.has('shadcn') && dir('components/ui', [file('button.tsx')]),
         (opts.has('zustand') || opts.has('redux')) && dir('store', [file(opts.has('zustand') ? 'useAppStore.ts' : 'index.ts')]),
         opts.has('axios') && dir('lib', [file('api.ts')]),
+        opts.has('i18n') && file('i18n.ts', 'TR / EN'),
+        locales,
         file('index.css', opts.has('tailwind') ? '@import "tailwindcss"' : undefined),
       ]),
       file('package.json'),
-      file('vite.config.ts', '/api → backend'),
+      file('vite.config.ts', proxyNote),
       file('Dockerfile'),
     ]);
   } else if (fw === 'vue') {
@@ -71,29 +77,31 @@ export function buildTree(resolved: ResolvedProject): TreeNode {
         opts.has('vue-router') && dir('router', [file('index.ts')]),
         opts.has('pinia') && dir('stores', [file('app.ts')]),
         opts.has('axios') && dir('lib', [file('api.ts')]),
+        opts.has('i18n') && file('i18n.ts', 'TR / EN'),
+        locales,
       ]),
       file('package.json'),
-      file('vite.config.ts', '/api → backend'),
+      file('vite.config.ts', proxyNote),
       file('Dockerfile'),
     ]);
   } else if (fw === 'angular') {
     frontend = dir('frontend', [
       dir('src/app', [file('app.config.ts'), file('app.routes.ts'), dir('pages', [file('status-page.ts')])]),
       file('angular.json'),
-      file('proxy.conf.mjs', '/api → backend'),
+      withBackend && file('proxy.conf.mjs', '/api → backend'),
       file('Dockerfile'),
     ]);
   } else if (fw === 'svelte') {
     frontend = dir('frontend', [
       dir('src', [file('main.ts'), file('App.svelte'), dir('lib', [file('status.ts'), opts.has('axios') && file('api.ts')])]),
       file('package.json'),
-      file('vite.config.ts', '/api → backend'),
+      file('vite.config.ts', proxyNote),
       file('Dockerfile'),
     ]);
   }
 
   const services = resolved.services;
-  const containerCount = 1 + (fw ? 1 : 0) + resolved.databases.length + services.length;
+  const containerCount = (withBackend ? 1 : 0) + (fw ? 1 : 0) + resolved.databases.length + services.length;
 
   return dir(name, [
     backend,
@@ -103,14 +111,17 @@ export function buildTree(resolved: ResolvedProject): TreeNode {
       services.includes('prometheus') && file('prometheus.yml'),
       services.includes('grafana') && dir('grafana', [file('datasource.yml')]),
     ]),
-    file('.env', 'portlar, şifreler'),
+    file('.env', withBackend ? 'portlar, şifreler' : 'portlar'),
     file('.gitignore'),
     file('compose.yaml', `${containerCount} servis`),
     file('README.md'),
+    opts.has('vercel') && file('vercel.json', 'Vercel ayarı'),
   ]);
 }
 
 export interface PortRow {
+  /** .env'deki değişken adı (gerçek portla eşleştirmek için) */
+  envName: string;
   label: string;
   detail: string;
   port: number;
@@ -120,16 +131,16 @@ export interface PortRow {
 export function previewPorts(resolved: ResolvedProject): PortRow[] {
   const rows: PortRow[] = [];
   const fw = resolved.selection.frontend.framework;
-  if (fw) rows.push({ label: 'Uygulama', detail: findFramework(fw).label, port: findFramework(fw).devPort });
-  rows.push({ label: 'Backend', detail: 'Spring Boot', port: 8080 });
+  if (fw) rows.push({ envName: 'FRONTEND_PORT', label: 'Uygulama', detail: findFramework(fw).label, port: findFramework(fw).devPort });
+  if (hasBackend(resolved.selection)) rows.push({ envName: 'BACKEND_PORT', label: 'Backend', detail: 'Spring Boot', port: 8080 });
   for (const id of resolved.databases) {
     const db = findDatabase(id);
-    rows.push({ label: db.label, detail: 'veritabanı', port: db.port.preferred });
+    rows.push({ envName: db.port.envName, label: db.label, detail: 'veritabanı', port: db.port.preferred });
   }
   for (const id of resolved.services) {
     const service = findService(id);
     const port = service.ports.find((p) => p.web) ?? service.ports[0];
-    rows.push({ label: service.label, detail: service.description, port: port.preferred });
+    rows.push({ envName: port.envName, label: service.label, detail: service.description, port: port.preferred });
   }
   return rows;
 }

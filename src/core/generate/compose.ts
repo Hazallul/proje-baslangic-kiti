@@ -3,6 +3,7 @@ import { findFramework } from '../catalog/frontend.js';
 import { findService, type ServiceContext } from '../catalog/services.js';
 import type { PortAssignment, ResolvedProject } from '../types.js';
 import { dockerPublishedPorts, findFreePort, randomPassword } from '../util.js';
+import { hasBackend } from '../selection.js';
 import { securityEnv } from './backend.js';
 
 export function serviceContext(resolved: ResolvedProject): ServiceContext {
@@ -13,29 +14,62 @@ export function serviceContext(resolved: ResolvedProject): ServiceContext {
   };
 }
 
+interface PortSpec {
+  envName: string;
+  label: string;
+  preferred: number;
+  web: 'root' | 'api' | false;
+}
+
+/** Projede bilgisayara açılacak tüm portlar (frontend, backend, veritabanları, servisler) */
+function portSpecs(resolved: ResolvedProject): PortSpec[] {
+  const specs: PortSpec[] = [];
+  const framework = resolved.selection.frontend.framework;
+  if (framework) specs.push({ envName: 'FRONTEND_PORT', label: 'Uygulama', preferred: findFramework(framework).devPort, web: 'root' });
+  if (hasBackend(resolved.selection)) specs.push({ envName: 'BACKEND_PORT', label: 'Backend API', preferred: 8080, web: 'api' });
+  for (const dbId of resolved.databases) {
+    const db = findDatabase(dbId);
+    specs.push({ envName: db.port.envName, label: db.label, preferred: db.port.preferred, web: false });
+  }
+  for (const serviceId of resolved.services) {
+    for (const p of findService(serviceId).ports) {
+      specs.push({ envName: p.envName, label: p.label, preferred: p.preferred, web: p.web ? 'root' : false });
+    }
+  }
+  return specs;
+}
+
+function toAssignment(spec: PortSpec, port: number): PortAssignment {
+  const url = spec.web === 'root' ? `http://localhost:${port}` : spec.web === 'api' ? `http://localhost:${port}/api/hello` : undefined;
+  return { envName: spec.envName, label: spec.label, port, preferred: spec.preferred, url };
+}
+
 /** Varsayılan portlar doluysa (başka proje, Docker container'ı) sıradaki boş portu seçer. */
 export async function assignPorts(resolved: ResolvedProject): Promise<PortAssignment[]> {
   const taken = await dockerPublishedPorts();
   const ports: PortAssignment[] = [];
-  const add = async (envName: string, label: string, preferred: number, web: 'root' | 'api' | false) => {
-    const port = await findFreePort(preferred, taken);
-    const url = web === 'root' ? `http://localhost:${port}` : web === 'api' ? `http://localhost:${port}/api/hello` : undefined;
-    ports.push({ envName, label, port, preferred, url });
-  };
-
-  const framework = resolved.selection.frontend.framework;
-  if (framework) await add('FRONTEND_PORT', 'Uygulama', findFramework(framework).devPort, 'root');
-  await add('BACKEND_PORT', 'Backend API', 8080, 'api');
-  for (const dbId of resolved.databases) {
-    const db = findDatabase(dbId);
-    await add(db.port.envName, db.label, db.port.preferred, false);
-  }
-  for (const serviceId of resolved.services) {
-    for (const p of findService(serviceId).ports) {
-      await add(p.envName, p.label, p.preferred, p.web ? 'root' : false);
-    }
+  for (const spec of portSpecs(resolved)) {
+    ports.push(toAssignment(spec, await findFreePort(spec.preferred, taken)));
   }
   return ports;
+}
+
+/** Daha önce oluşturulmuş projenin portları (.env içeriğinden) */
+export function portsFromEnv(resolved: ResolvedProject, env: string): PortAssignment[] {
+  const values = parseEnv(env);
+  return portSpecs(resolved).map((spec) => toAssignment(spec, Number(values[spec.envName]) || spec.preferred));
+}
+
+/** .env içeriğini anahtar → değer olarak okur */
+export function parseEnv(env: string): Record<string, string> {
+  return Object.fromEntries([...env.matchAll(/^([A-Z][A-Z0-9_]*)=(.*)$/gm)].map((m) => [m[1], m[2].trim()]));
+}
+
+/** .env'deki kullanıcı adları ve şifreler (portlar hariç), bitiş ekranında gösterilir */
+export function credentialsOf(env: string): { key: string; value: string }[] {
+  return Object.entries(parseEnv(env))
+    .filter(([key]) => !key.endsWith('_PORT') && key !== 'API_URL')
+    .map(([key, value]) => ({ key, value }));
 }
 
 /** Arayüzde ve README'de gösterilecek, tarayıcıda açılabilir adresler */
@@ -108,11 +142,14 @@ export function composeFile(resolved: ResolvedProject): string {
   }
   Object.assign(backendEnv, securityEnv(resolved).backendEnv);
 
+  const backend = hasBackend(sel);
   const buildFile = sel.backend.buildTool === 'gradle' ? 'build.gradle' : 'pom.xml';
   const envLines = Object.entries(backendEnv).map(([k, v]) => `      ${k}: ${quote(v)}`);
   const dependsLines = Object.entries(dependsOn).map(([s, c]) => `      ${s}:\n        condition: ${c}`);
-  blocks.push(`  backend:
-    build: ./backend${envLines.length ? `\n    environment:\n${envLines.join('\n')}` : ''}
+  if (backend) blocks.push(`  backend:
+    build: ./backend
+    # Veritabanı ilk açılışta geç kalırsa birkaç kez yeniden dener
+    restart: on-failure:5${envLines.length ? `\n    environment:\n${envLines.join('\n')}` : ''}
     ports:
       - "\${BACKEND_PORT}:8080"${dependsLines.length ? `\n    depends_on:\n${dependsLines.join('\n')}` : ''}
     # "docker compose watch" açıkken Java kodu değişince imaj yeniden derlenir
@@ -127,13 +164,14 @@ export function composeFile(resolved: ResolvedProject): string {
   if (framework) {
     const port = findFramework(framework).devPort;
     blocks.push(`  frontend:
-    build: ./frontend
+    build: ./frontend${backend ? `
     environment:
-      API_URL: http://backend:8080
+      # Backend'i IDE'de çalıştırırken .env'e API_URL=http://host.docker.internal:8080 yaz
+      API_URL: "\${API_URL:-http://backend:8080}"` : ''}
     ports:
-      - "\${FRONTEND_PORT}:${port}"
+      - "\${FRONTEND_PORT}:${port}"${backend ? `
     depends_on:
-      - backend
+      - backend` : ''}
     # "docker compose watch" açıkken dosyalar container'a kopyalanır, dev sunucusu anında yeniler
     develop:
       watch:

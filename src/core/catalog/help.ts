@@ -135,6 +135,21 @@ export const FRONTEND_OPTION_HELP: Record<string, HelpText> = {
     when: 'Proje büyüyecekse ve hataları erken yakalamak istiyorsan. CV\'de test yazdığını göstermek için de iyi.',
     level: 'Önerilir',
   },
+  motion: {
+    what: 'React için animasyon kütüphanesi (eski adıyla Framer Motion). Kartların süzülmesi, tıklanınca büyüyerek açılması, sayfa geçişleri gibi efektleri birkaç satırla yaparsın.',
+    when: 'Portfolyo, tanıtım sayfası gibi göze hitap etmesi gereken sitelerde. Başlangıç sayfası örnek bir giriş animasyonuyla gelir.',
+    level: 'İhtiyaç olursa',
+  },
+  i18n: {
+    what: 'Sitenin metinlerini dil dosyalarında (src/locales/tr.ts, en.ts) tutar; tek düğmeyle dil değişir. Seçilen dil tarayıcıda hatırlanır.',
+    when: 'Sitenin birden fazla dilde olması gerekiyorsa (ör. Türkçe ve İngilizce CV/portfolyo).',
+    level: 'İhtiyaç olursa',
+  },
+  vercel: {
+    what: 'Frontend\'i Vercel\'e ücretsiz yayınlamak için vercel.json ekler. GitHub deposunu Vercel\'e bağlayınca her push\'ta site güncellenir.',
+    when: 'Sadece frontend projelerinde (portfolyo gibi) siteyi internete açmak için. Backend Vercel\'de çalışmaz.',
+    level: 'İhtiyaç olursa',
+  },
 };
 
 export const NEED_HELP: Record<string, HelpText> = {

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { findDatabase } from '../../../core/catalog/databases';
 import { findFramework } from '../../../core/catalog/frontend';
 import { findService } from '../../../core/catalog/services';
+import { hasBackend } from '../../../core/selection';
 import type { ResolvedProject } from '../../../core/types';
 import { cx } from '../ui';
 import { servicePreview, SwaggerUi } from './ServicePreviews';
@@ -115,7 +116,7 @@ export function PreviewPanel({ resolved, hoverKit, hoverTarget, pinned, onPin, o
         )}
 
         {shown?.kind === 'frontend' && sel.frontend.framework && (
-          <PreviewBody framework={sel.frontend.framework} projectName={sel.name} kit={kit} tab={tab} setTab={setTab} />
+          <PreviewBody framework={sel.frontend.framework} projectName={sel.name} backend={hasBackend(sel)} kit={kit} tab={tab} setTab={setTab} />
         )}
 
         {shown?.kind === 'swagger' && (

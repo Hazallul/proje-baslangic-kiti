@@ -1,6 +1,6 @@
 {
   "name": "create-hazal-app",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "Spring Boot + frontend + Docker projelerini hızlıca kuran masaüstü ve CLI aracı",
   "type": "module",
   "bin": {
@@ -13,6 +13,8 @@
     "build": "tsc && vite build",
     "prepublishOnly": "npm run build",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.renderer.json",
+    "test": "tsc && node --test \"test/*.test.mjs\"",
+    "verify:frontends": "tsc && node scripts/verify-frontends.mjs",
     "ui": "vite",
     "start": "npm run build && electron .",
     "dist:win": "npm run build && electron-builder --win",

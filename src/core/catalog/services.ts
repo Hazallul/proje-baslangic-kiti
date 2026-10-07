@@ -34,8 +34,8 @@ export interface ServiceDef {
   requires?: string[];
   /** Sadece bu veritabanlarından biri seçiliyse anlamlı */
   forDatabases?: string[];
-  /** Bu bağımlılık/veritabanı seçilince öneri olarak gösterilir */
-  suggestWhen: { dependencies?: string[]; databases?: string[] };
+  /** Bu bağımlılık/veritabanı seçilince öneri olarak gösterilir (unlessNeeds: bu ihtiyaç varyantlarından biri seçiliyse önerme) */
+  suggestWhen: { dependencies?: string[]; databases?: string[]; unlessNeeds?: Record<string, string[]> };
 }
 
 export const SERVICES: ServiceDef[] = [
@@ -213,7 +213,8 @@ export const SERVICES: ServiceDef[] = [
     backendEnv: (ctx) => ({
       JWT_JWK_SET_URI: `http://keycloak:8080/realms/${ctx.projectName}/protocol/openid-connect/certs`,
     }),
-    suggestWhen: { dependencies: ['oauth2-resource-server', 'oauth2-client'] },
+    // JWT/Basic seçiliyse tokenları backend kendisi üretir, Keycloak önermek kafa karıştırır
+    suggestWhen: { dependencies: ['oauth2-resource-server', 'oauth2-client'], unlessNeeds: { security: ['jwt', 'basic'] } },
   },
   {
     id: 'mailpit',

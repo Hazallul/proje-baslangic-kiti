@@ -1,9 +1,10 @@
 import { AlertCircle } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { InitializrCatalog } from '../../core/initializr';
-import { applyPreset, defaultSelection, resolve, validate } from '../../core/selection';
+import { findFramework } from '../../core/catalog/frontend';
+import { applyPreset, defaultSelection, hasBackend, resolve, validate } from '../../core/selection';
 import type { GenerateEvent, GenerateResult, Selection } from '../../core/types';
-import type { SavedTemplate, Settings, ToolStatus } from '../../shared/bridge';
+import type { GenerateOutcome, SavedTemplate, Settings, TargetCheck, ToolStatus } from '../../shared/bridge';
 import { api } from './api';
 import { TitleBar } from './TitleBar';
 import { Button, inputClass, Kbd } from './ui';
@@ -43,7 +44,8 @@ export default function App() {
   const [view, setView] = useState<View>('config');
   const [progress, setProgress] = useState<ProgressState>(initialProgress);
   const [done, setDone] = useState<{ result: GenerateResult; links: { label: string; url: string }[] } | null>(null);
-  const [targetTaken, setTargetTaken] = useState(false);
+  const [target, setTarget] = useState<TargetCheck>({ folderTaken: false, dockerConflict: null });
+  const [livePorts, setLivePorts] = useState<Record<string, number> | null>(null);
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [templateName, setTemplateName] = useState('');
   const projectDirRef = useRef('');
@@ -77,16 +79,44 @@ export default function App() {
 
   const resolved = useMemo(() => resolve(sel), [sel]);
   const issues = useMemo(() => validate(sel), [sel]);
+  const nameValid = !issues.some((i) => i.field === 'name');
 
-  // Aynı adla dolu bir klasör var mı? (yazmayı bırakınca kontrol et)
+  // Aynı adla dolu bir klasör ya da Docker projesi var mı? (yazmayı bırakınca kontrol et)
   useEffect(() => {
-    if (!sel.location || issues.some((i) => i.field === 'name')) return setTargetTaken(false);
-    const timer = setTimeout(() => void api.isTargetFree(sel).then((free) => setTargetTaken(!free)), 250);
-    return () => clearTimeout(timer);
-  }, [sel.name, sel.location, issues]);
+    // Önceki adın sonucu yeni adın altında kalmasın (oluştururken zaten tekrar kontrol edilir)
+    setTarget({ folderTaken: false, dockerConflict: null });
+    if (!sel.location || !nameValid) return;
+    let stale = false;
+    const timer = setTimeout(() => void api.checkTarget(sel).then((t) => !stale && setTarget(t)), 300);
+    return () => {
+      stale = true;
+      clearTimeout(timer);
+    };
+  }, [sel.name, sel.location, nameValid]);
+
+  // Önizlemede gerçekte kullanılacak portları göster (3306 doluysa 3307 gibi)
+  const portKey = JSON.stringify([sel.frontend.framework, resolved.databases, resolved.services]);
+  useEffect(() => {
+    if (view !== 'config') return;
+    let stale = false;
+    const timer = setTimeout(() => {
+      void api.previewPorts(sel)
+        .then((ports) => !stale && setLivePorts(Object.fromEntries(ports.map((p) => [p.envName, p.port]))))
+        .catch(() => !stale && setLivePorts(null));
+    }, 400);
+    return () => {
+      stale = true;
+      clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [portKey, view]);
+
+  const targetIssue = target.folderTaken
+    ? `"${sel.name}" klasörü bu konumda zaten var ve boş değil`
+    : target.dockerConflict;
 
   const blocking = issues[0]?.message
-    ?? (targetTaken ? 'Bu adla dolu bir klasör var, başka bir ad seç' : null)
+    ?? (targetIssue ? 'Bu ad kullanılıyor, başka bir ad seç' : null)
     ?? (tools && !tools.node && sel.frontend.framework ? 'Frontend için Node.js gerekli (npm bulunamadı)' : null);
 
   // -------------------------------------------------------------------------
@@ -110,16 +140,10 @@ export default function App() {
     });
   }, []);
 
-  const generate = useCallback(async () => {
-    if (blocking || busyRef.current) return;
-    busyRef.current = true;
-    if (settings) saveSettings({ ...settings, lastSelection: sel });
-    projectDirRef.current = `${sel.location}\\${sel.name}`;
-    setProgress(initialProgress());
-    setView('progress');
-
+  /** Oluşturma veya yeniden başlatma: ilerlemeyi dinler, sonuca göre bitiş ya da hata ekranı */
+  const runJob = useCallback(async (job: () => Promise<GenerateOutcome>) => {
     const unsubscribe = api.onGenerateEvent(handleEvent);
-    const outcome = await api.generate(sel);
+    const outcome = await job();
     unsubscribe();
     busyRef.current = false;
 
@@ -130,7 +154,31 @@ export default function App() {
     } else {
       setProgress((p) => ({ ...p, phase: outcome.cancelled ? 'cancelled' : 'error', error: outcome.message }));
     }
-  }, [blocking, settings, sel, saveSettings, handleEvent]);
+  }, [handleEvent]);
+
+  const generate = useCallback(async () => {
+    if (blocking || busyRef.current) return;
+    busyRef.current = true;
+    if (settings) saveSettings({ ...settings, lastSelection: sel });
+    projectDirRef.current = `${sel.location}\\${sel.name}`;
+    setProgress(initialProgress());
+    setView('progress');
+
+    await runJob(() => api.generate(sel));
+  }, [blocking, settings, sel, saveSettings, runJob]);
+
+  // Docker adımı hata verdiyse: dosyalara dokunmadan sadece derle ve başlat
+  const restartDocker = useCallback(async () => {
+    if (busyRef.current) return;
+    busyRef.current = true;
+    setProgress((p) => ({
+      ...p,
+      phase: 'running',
+      error: undefined,
+      steps: { ...p.steps, 'docker-build': { status: 'pending' }, services: { status: 'pending' } },
+    }));
+    await runJob(() => api.startProject(sel));
+  }, [sel, runJob]);
 
   // Ctrl+Enter ile oluştur (sadece ayar ekranında)
   useEffect(() => {
@@ -157,7 +205,11 @@ export default function App() {
     setTemplateName('');
   };
 
-  const crumb = view === 'config' ? 'Yeni proje' : view === 'progress' ? 'Oluşturuluyor' : 'Hazır';
+  const crumb = view === 'config'
+    ? 'Yeni proje'
+    : view === 'done'
+      ? 'Hazır'
+      : progress.phase === 'error' ? 'Oluşturulamadı' : progress.phase === 'cancelled' ? 'İptal edildi' : 'Oluşturuluyor';
 
   return (
     <div className="flex h-full flex-col">
@@ -180,7 +232,7 @@ export default function App() {
                   resolved={resolved}
                   catalog={catalog}
                   issues={issues}
-                  targetTaken={targetTaken}
+                  targetIssue={targetIssue}
                   tools={tools}
                   activePreset={activePreset}
                   templates={settings?.templates ?? []}
@@ -224,6 +276,11 @@ export default function App() {
                         <span className="flex items-center gap-1.5 text-danger">
                           <AlertCircle size={14} className="shrink-0" /> <span className="truncate">{blocking}</span>
                         </span>
+                      ) : !hasBackend(sel) ? (
+                        <span className="truncate text-fg-2">
+                          Sadece frontend · {findFramework(sel.frontend.framework!).label}
+                          {' · '}<span className="tabular">{sel.frontend.options.length}</span> seçenek
+                        </span>
                       ) : (
                         <span className="truncate text-fg-2">
                           <span className="tabular">{resolved.dependencies.length + resolved.libraries.length}</span> paket
@@ -254,6 +311,7 @@ export default function App() {
                 setView('config');
                 setTimeout(() => void generate(), 0);
               }}
+              onRestartDocker={() => void restartDocker()}
               onOpenFolder={() => void api.openFolder(projectDirRef.current)}
               onOpenEditor={() => void api.openInEditor(projectDirRef.current)}
             />
@@ -278,7 +336,7 @@ export default function App() {
           )}
         </main>
 
-        <PreviewPane resolved={resolved} />
+        <PreviewPane resolved={resolved} livePorts={livePorts} />
       </div>
     </div>
   );

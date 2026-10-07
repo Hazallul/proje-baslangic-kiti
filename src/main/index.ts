@@ -1,13 +1,13 @@
-import { app, BrowserWindow, dialog, ipcMain, nativeTheme, shell } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, nativeTheme, screen, shell } from 'electron';
 import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { serviceLinks } from '../core/generate/compose.js';
-import { generateProject, isDockerRunning, isTargetFree } from '../core/generate/index.js';
+import { assignPorts, serviceLinks } from '../core/generate/compose.js';
+import { dockerConflict, type GenerateOptions, generateProject, startProject, hasGitIdentity, isDockerRunning, isTargetFree } from '../core/generate/index.js';
 import { loadCatalog } from '../core/initializr.js';
 import { resolve } from '../core/selection.js';
-import type { Selection } from '../core/types.js';
+import type { GenerateResult, Selection } from '../core/types.js';
 import { CancelledError, commandSucceeds } from '../core/util.js';
 import { type AppApi, type GenerateOutcome, IPC, type Settings } from '../shared/bridge.js';
 
@@ -44,9 +44,11 @@ ensureToolPaths();
 
 function createWindow(): void {
   const theme = nativeTheme.shouldUseDarkColors ? 'dark' : 'light';
+  const workArea = screen.getPrimaryDisplay().workAreaSize;
   window = new BrowserWindow({
-    width: 1240,
-    height: 820,
+    // Ekrandan taşmasın (görev çubuğu alttaki butonu örtmesin)
+    width: Math.min(1440, workArea.width),
+    height: Math.min(900, workArea.height),
     minWidth: 980,
     minHeight: 640,
     title: 'create-hazal-app',
@@ -62,6 +64,8 @@ function createWindow(): void {
       sandbox: true,
     },
   });
+  // Dizüstü ekranlarda önizleme panelinin formun yanına sığması için tam ekran aç
+  if (workArea.width <= 1600) window.maximize();
   window.once('ready-to-show', () => window?.show());
 
   // Arayüzdeki bağlantılar uygulamanın içinde değil, varsayılan tarayıcıda açılsın
@@ -83,7 +87,31 @@ function readSettings(): Settings {
   }
 }
 
-type Handlers = { [K in keyof AppApi]?: (...args: Parameters<AppApi[K]>) => ReturnType<AppApi[K]> };
+/** Oluşturma / yeniden başlatma: aynı anda tek iş, ilerleme olayları arayüze gönderilir */
+async function runJob(
+  selection: Selection,
+  job: (sel: Selection, opts: GenerateOptions) => Promise<GenerateResult>,
+): Promise<GenerateOutcome> {
+  if (running) return { ok: false, cancelled: false, message: 'Zaten bir işlem sürüyor.' };
+  running = new AbortController();
+  try {
+    const result = await job(selection, {
+      signal: running.signal,
+      onEvent: (event) => window?.webContents.send(IPC.generateEvent, event),
+    });
+    return { ok: true, result, links: serviceLinks(resolve(selection), result.ports) };
+  } catch (error) {
+    return {
+      ok: false,
+      cancelled: error instanceof CancelledError,
+      message: error instanceof Error ? error.message : String(error),
+    };
+  } finally {
+    running = null;
+  }
+}
+
+type Handlers ={ [K in keyof AppApi]?: (...args: Parameters<AppApi[K]>) => ReturnType<AppApi[K]> };
 
 const handlers: Handlers = {
   loadCatalog: () => loadCatalog(join(app.getPath('userData'), 'initializr.json')),
@@ -109,36 +137,26 @@ const handlers: Handlers = {
     return result.canceled ? null : result.filePaths[0];
   },
 
-  isTargetFree: async (selection) => isTargetFree(selection),
+  checkTarget: async (selection) => ({
+    folderTaken: !isTargetFree(selection),
+    dockerConflict: await dockerConflict(selection.name),
+  }),
+
+  previewPorts: async (selection) => assignPorts(resolve(selection)),
 
   toolStatus: async () => {
-    const [docker, node, git] = await Promise.all([
+    const [docker, node, git, gitIdentity] = await Promise.all([
       isDockerRunning(),
       commandSucceeds('npm --version', app.getPath('home')),
       commandSucceeds('git --version', app.getPath('home')),
+      hasGitIdentity(),
     ]);
-    return { docker, node, git };
+    return { docker, node, git, gitIdentity };
   },
 
-  generate: async (selection: Selection): Promise<GenerateOutcome> => {
-    if (running) return { ok: false, cancelled: false, message: 'Zaten bir proje oluşturuluyor.' };
-    running = new AbortController();
-    try {
-      const result = await generateProject(selection, {
-        signal: running.signal,
-        onEvent: (event) => window?.webContents.send(IPC.generateEvent, event),
-      });
-      return { ok: true, result, links: serviceLinks(resolve(selection), result.ports) };
-    } catch (error) {
-      return {
-        ok: false,
-        cancelled: error instanceof CancelledError,
-        message: error instanceof Error ? error.message : String(error),
-      };
-    } finally {
-      running = null;
-    }
-  },
+  generate: (selection: Selection) => runJob(selection, generateProject),
+
+  startProject: (selection: Selection) => runJob(selection, startProject),
 
   cancelGenerate: async () => {
     running?.abort();

@@ -31,13 +31,14 @@ function formatDuration(ms: number): string {
   return s < 60 ? `${s} sn` : `${Math.floor(s / 60)} dk ${s % 60} sn`;
 }
 
-export function ProgressView({ name, projectDir, progress, onCancel, onBack, onRetry, onOpenFolder, onOpenEditor }: {
+export function ProgressView({ name, projectDir, progress, onCancel, onBack, onRetry, onRestartDocker, onOpenFolder, onOpenEditor }: {
   name: string;
   projectDir: string;
   progress: ProgressState;
   onCancel: () => void;
   onBack: () => void;
   onRetry: () => void;
+  onRestartDocker: () => void;
   onOpenFolder: () => void;
   onOpenEditor: () => void;
 }) {
@@ -47,6 +48,7 @@ export function ProgressView({ name, projectDir, progress, onCancel, onBack, onR
   const running = progress.phase === 'running';
   // Dosyalar yazıldıktan sonraki adımlarda (git, docker) hata olursa proje klasörü yerinde kalır
   const filesWritten = progress.steps['docker-files'].status === 'done';
+  const dockerFailed = progress.steps['docker-build'].status === 'error' || progress.steps.services.status === 'error';
 
   useEffect(() => {
     if (!running) return;
@@ -115,9 +117,11 @@ export function ProgressView({ name, projectDir, progress, onCancel, onBack, onR
               <div className="mb-1 text-[13px] font-medium text-danger">Hata</div>
               <pre className="max-h-40 overflow-auto font-mono text-[11.5px] whitespace-pre-wrap text-fg select-text">{progress.error}</pre>
               <p className="mt-2 text-[12px] text-fg-2">
-                {filesWritten
-                  ? 'Proje dosyaları oluştu; sorun Docker tarafında. Klasörde "docker compose up -d --build" ile tekrar deneyebilirsin.'
-                  : 'Yarım kalan klasör silindi. Ayarları kontrol edip tekrar deneyebilirsin.'}
+                {dockerFailed
+                  ? 'Proje dosyaları oluştu; sorun Docker tarafında. Sebebi düzelttikten sonra (ör. Docker Desktop açık mı, port boş mu) "Tekrar başlat" ile sadece Docker adımlarını tekrarlayabilirsin.'
+                  : filesWritten
+                    ? 'Proje dosyaları oluştu; klasörü açıp devam edebilirsin.'
+                    : 'Yarım kalan klasör silindi. Ayarları kontrol edip tekrar deneyebilirsin.'}
               </p>
             </div>
           )}
@@ -153,7 +157,8 @@ export function ProgressView({ name, projectDir, progress, onCancel, onBack, onR
             {progress.phase === 'error' && filesWritten && (
               <>
                 <Button onClick={onOpenFolder}>Klasörü aç</Button>
-                <Button variant="primary" onClick={onOpenEditor}>VS Code'da aç</Button>
+                <Button variant={dockerFailed ? undefined : 'primary'} onClick={onOpenEditor}>VS Code'da aç</Button>
+                {dockerFailed && <Button variant="primary" onClick={onRestartDocker}>Tekrar başlat</Button>}
               </>
             )}
             {progress.phase === 'error' && !filesWritten && <Button variant="primary" onClick={onRetry}>Tekrar dene</Button>}

@@ -144,6 +144,8 @@ interface PreviewProps {
   options: string[];
   hoverKit: string | null;
   projectName: string;
+  /** Projede backend var mı (açılış sayfası örneği buna göre) */
+  backend: boolean;
 }
 
 export function usePreviewState({ options, hoverKit }: Pick<PreviewProps, 'options' | 'hoverKit'>) {
@@ -152,9 +154,10 @@ export function usePreviewState({ options, hoverKit }: Pick<PreviewProps, 'optio
 }
 
 /** Sekmeler + tarayıcı çerçevesi + açıklama: hem sol panelde hem form içinde kullanılır */
-export function PreviewBody({ framework, projectName, kit, tab, setTab }: {
+export function PreviewBody({ framework, projectName, backend, kit, tab, setTab }: {
   framework: FrameworkId;
   projectName: string;
+  backend: boolean;
   kit: KitTheme;
   tab: PreviewTab;
   setTab: (t: PreviewTab) => void;
@@ -176,12 +179,14 @@ export function PreviewBody({ framework, projectName, kit, tab, setTab }: {
         <span className="text-[11.5px] text-fg-3">Temsili görünüm</span>
       </div>
       <BrowserFrame url={`localhost:${fw.devPort}`}>
-        {tab === 'components' ? <ComponentsSample kit={kit} /> : <StartPageSample name={projectName} />}
+        {tab === 'components' ? <ComponentsSample kit={kit} /> : <StartPageSample name={projectName} kit={kit} backend={backend} framework={fw.label} />}
       </BrowserFrame>
       <p className="mt-2.5 text-[12px] leading-relaxed text-fg-2">
         {tab === 'components'
           ? kit.note
-          : 'Proje oluşunca açılan ilk sayfa. Frontend, backend ve veritabanı bağlantısını kontrol eder; kendi sayfalarınla değiştirirsin.'}
+          : backend
+            ? "Proje oluşunca açılan ilk sayfa, seçtiğin kütüphanenin bileşenleriyle yazılır. Bağlantıları kontrol eder ve backend'e örnek bir istek atar; kendi sayfalarınla değiştirirsin."
+            : 'Proje oluşunca açılan ilk sayfa, seçtiğin kütüphanenin bileşenleriyle yazılır. Kurulan araçları listeler ve seni selamlar; kendi sayfalarınla değiştirirsin.'}
       </p>
     </>
   );
@@ -212,7 +217,7 @@ export function UiPreview(props: PreviewProps) {
       </button>
       {open && (
         <div className="enter border-t border-line p-3.5">
-          <PreviewBody framework={props.framework} projectName={props.projectName} kit={kit} tab={tab} setTab={setTab} />
+          <PreviewBody framework={props.framework} projectName={props.projectName} backend={props.backend} kit={kit} tab={tab} setTab={setTab} />
         </div>
       )}
     </div>
@@ -241,7 +246,7 @@ export function SidebarPreview(props: PreviewProps & { onGoToFrontend: () => voi
 
       {props.framework ? (
         <>
-          <PreviewBody framework={props.framework} projectName={props.projectName} kit={kit} tab={tab} setTab={setTab} />
+          <PreviewBody framework={props.framework} projectName={props.projectName} backend={props.backend} kit={kit} tab={tab} setTab={setTab} />
           <p className="mt-2 text-[11.5px] leading-relaxed text-fg-3">
             UI kütüphanesi seçeneklerinin üzerine gelerek seçmeden karşılaştırabilirsin.
           </p>
@@ -409,23 +414,46 @@ function ComponentsSample({ kit }: { kit: KitTheme }) {
   );
 }
 
-/** Oluşturulan projenin ilk açılış sayfası (StatusPage) */
-function StartPageSample({ name }: { name: string }) {
-  const rows: [string, string][] = [['Frontend', 'çalışıyor'], ['Backend', 'çalışıyor'], ['Veritabanı', 'çalışıyor']];
+/**
+ * Projeyle gelen başlangıç sayfası: bağlantı durumu + backend'e giden "merhaba dünya" formu
+ * (sadece frontend projesinde kurulum listesi + sayfanın kendi selamlaması)
+ */
+function StartPageSample({ name, kit, backend, framework }: { name: string; kit: KitTheme; backend: boolean; framework: string }) {
+  const rows: [string, string][] = backend
+    ? [['Frontend', 'çalışıyor'], ['Backend', 'çalışıyor'], ['Veritabanı', 'çalışıyor']]
+    : [[framework, 'çalışıyor']];
+  const card: CSSProperties = {
+    background: kit.surface, border: kit.cardBorder ? `1px solid ${kit.border}` : 'none', boxShadow: kit.cardShadow,
+    borderRadius: kit.radius, padding: 12, display: 'flex', flexDirection: 'column', gap: 9,
+  };
   return (
-    <div style={{ background: '#ffffff', color: '#1f2328', height: '100%', fontFamily: SYSTEM, padding: '34px 0 0' }}>
-      <div style={{ maxWidth: 360, margin: '0 auto' }}>
-        <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 6 }}>{name || 'my-app'}</div>
-        <div style={{ fontSize: 12, opacity: 0.7, lineHeight: 1.6 }}>
-          Proje hazır. Geliştirmeye frontend/src ve backend/src klasörlerinden başlayabilirsin.
+    <div style={{ background: kit.page, color: kit.text, height: '100%', fontFamily: kit.font, padding: '18px 0 0' }}>
+      <div style={{ maxWidth: 380, margin: '0 auto', padding: '0 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div>
+          <div style={{ fontSize: 19, fontWeight: 700, marginBottom: 3 }}>{name || 'my-app'}</div>
+          <div style={{ fontSize: 11, color: kit.muted, lineHeight: 1.5 }}>Proje hazır. Bu sayfa kurulumun çalıştığını gösterir.</div>
         </div>
-        <div style={{ marginTop: 18, border: '1px solid #8884', borderRadius: 10 }}>
-          {rows.map(([label, status], i) => (
-            <div key={label} style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 12px', borderTop: i ? '1px solid #8884' : 'none', fontSize: 12 }}>
-              <span>{label}</span>
-              <span style={{ fontSize: 11, padding: '1px 8px', borderRadius: 99, background: '#1a7f3722', color: '#1a7f37' }}>{status}</span>
-            </div>
-          ))}
+        <div style={card}>
+          <div style={{ fontSize: 12, fontWeight: 600 }}>{backend ? 'Bağlantı durumu' : 'Kurulum'}</div>
+          <div style={{ border: `1px solid ${kit.border}`, borderRadius: Math.min(kit.radius, 8) }}>
+            {rows.map(([label, status], i) => (
+              <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', borderTop: i ? `1px solid ${kit.border}` : 'none', fontSize: 11 }}>
+                <span>{label}</span>
+                <span style={{ fontSize: 10, fontWeight: 600, padding: '1px 7px', borderRadius: kit.badgeRadius, background: kit.successSoft, color: kit.success }}>{status}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div style={card}>
+          <div style={{ fontSize: 12, fontWeight: 600 }}>Merhaba dünya</div>
+          <div style={{ fontSize: 10.5, color: kit.muted }}>
+            {backend ? "Adını yaz ve gönder: istek backend'e gider, cevabı buraya gelir." : 'Adını yaz ve gönder, sayfa seni selamlasın.'}
+          </div>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <div style={{ ...inputStyle(kit), flex: 1, height: 30, display: 'flex', alignItems: 'center', padding: '0 9px', fontSize: 11.5 }}>Ayşe</div>
+            <span style={{ ...buttonStyle(kit, 'primary'), display: 'inline-flex', alignItems: 'center' }}>Gönder</span>
+          </div>
+          <div style={{ fontSize: 13, fontWeight: 600 }}>Merhaba, Ayşe!</div>
         </div>
       </div>
     </div>

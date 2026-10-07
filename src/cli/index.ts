@@ -13,11 +13,11 @@ import { serviceLinks } from '../core/generate/compose.js';
 import { loadCatalog } from '../core/initializr.js';
 import {
   applyPreset, availableServices, defaultSelection, GROUP_PATTERN, NAME_PATTERN, PRESETS, resolve as resolveSelection,
-  setFramework, setNeed, suggestedServices,
+  setFramework, setNeed, setProjectKind, suggestedServices,
 } from '../core/selection.js';
 import type { FrameworkId, Selection } from '../core/types.js';
 
-const VERSION = '0.2.2';
+const VERSION = '0.3.0';
 
 const HELP = `
 ${pc.bold('create-hazal-app')} - Spring Boot projesini (isteğe bağlı frontend ve Docker servisleriyle) kurar
@@ -57,7 +57,16 @@ async function main(): Promise<void> {
 
   let sel: Selection;
   if (flags.config) {
-    sel = { ...defaultSelection(), ...JSON.parse(readFileSync(flags.config, 'utf8')) };
+    // İç içe alanlar da birleştirilir: JSON'da sadece backend.dependencies verilse bile diğer backend ayarları varsayılan kalır
+    const base = defaultSelection();
+    const json = JSON.parse(readFileSync(flags.config, 'utf8')) as Partial<Selection>;
+    sel = {
+      ...base,
+      ...json,
+      backend: { ...base.backend, ...json.backend },
+      database: { ...base.database, ...json.database },
+      frontend: { ...base.frontend, ...json.frontend },
+    };
     if (positionals[0]) sel.name = positionals[0];
   } else {
     sel = await ask(positionals[0]);
@@ -108,6 +117,21 @@ async function ask(nameArg?: string): Promise<Selection> {
     placeholder: 'my-app',
     validate: (v) => (v && NAME_PATTERN.test(v) ? undefined : 'Küçük harfle başlamalı; küçük harf, rakam ve tire'),
   }));
+
+  const kind = check(await p.select({
+    message: 'Proje türü?',
+    options: [
+      { value: 'fullstack' as const, label: 'Fullstack', hint: 'Spring Boot + frontend' },
+      { value: 'backend' as const, label: 'Sadece backend', hint: 'Spring Boot API' },
+      { value: 'frontend' as const, label: 'Sadece frontend', hint: 'Backend yok: portfolyo, tanıtım sitesi' },
+    ],
+  }));
+  if (kind === 'frontend') {
+    sel = setProjectKind(sel, 'frontend');
+    await askFrontend(sel, false);
+    sel.start = check(await p.confirm({ message: 'Oluşunca Docker ile başlatılsın mı?', initialValue: true }));
+    return sel;
+  }
 
   sel.backend.groupId = check(await p.text({
     message: 'Group ID?',
@@ -187,25 +211,8 @@ async function ask(nameArg?: string): Promise<Selection> {
   }));
 
   // Frontend
-  const framework = check(await p.select({
-    message: 'Frontend?',
-    options: [
-      { value: 'none', label: 'Yok', hint: 'Sadece backend' },
-      ...FRAMEWORKS.map((f) => ({ value: f.id, label: f.label, hint: f.description })),
-    ],
-    initialValue: sel.frontend.framework ?? 'none',
-  }));
-  sel = setFramework(sel, framework === 'none' ? null : (framework as FrameworkId));
-  if (sel.frontend.framework) {
-    const fw = findFramework(sel.frontend.framework);
-    const options = check(await p.multiselect({
-      message: `${fw.label} seçenekleri?`,
-      options: fw.options.map((o) => ({ value: o.id, label: o.label, hint: `${OPTION_GROUPS[o.group].label} · ${o.description}` })),
-      initialValues: sel.frontend.options,
-      required: false,
-    }));
-    sel.frontend.options = normalizeOptions(sel.frontend.framework, options);
-  }
+  if (kind === 'fullstack') sel = await askFrontend(sel, true);
+  else sel = setFramework(sel, null);
 
   // Ek servisler: ihtiyaçlardan gelenler ve öneriler seçili gelir
   const resolved = resolveSelection(sel);
@@ -225,6 +232,27 @@ async function ask(nameArg?: string): Promise<Selection> {
   }
 
   sel.start = check(await p.confirm({ message: 'Oluşunca Docker ile başlatılsın mı?', initialValue: true }));
+  return sel;
+}
+
+/** Framework ve seçeneklerini sorar (sel'i yerinde günceller ve döner) */
+async function askFrontend(sel: Selection, backend: boolean): Promise<Selection> {
+  const framework = check(await p.select({
+    message: 'Frontend?',
+    options: FRAMEWORKS.map((f) => ({ value: f.id, label: f.label, hint: f.description })),
+    initialValue: sel.frontend.framework ?? 'react',
+  }));
+  Object.assign(sel, setFramework(sel, framework as FrameworkId));
+  const fw = findFramework(framework as FrameworkId);
+  // Vercel sadece frontend yayınlar; backend'li projede gösterme
+  const available = fw.options.filter((o) => !(backend && o.group === 'deploy'));
+  const options = check(await p.multiselect({
+    message: `${fw.label} seçenekleri?`,
+    options: available.map((o) => ({ value: o.id, label: o.label, hint: `${OPTION_GROUPS[o.group].label} · ${o.description}` })),
+    initialValues: sel.frontend.options,
+    required: false,
+  }));
+  sel.frontend.options = normalizeOptions(fw.id, options);
   return sel;
 }
 

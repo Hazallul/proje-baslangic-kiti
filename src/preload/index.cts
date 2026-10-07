@@ -10,9 +10,11 @@ const api: AppApi = {
   saveSettings: (settings) => ipcRenderer.invoke('settings:save', settings),
   defaultLocation: () => ipcRenderer.invoke('app:default-location'),
   pickFolder: (current) => ipcRenderer.invoke('dialog:pick-folder', current),
-  isTargetFree: (selection) => ipcRenderer.invoke('project:is-target-free', selection),
+  checkTarget: (selection) => ipcRenderer.invoke('project:check-target', selection),
+  previewPorts: (selection) => ipcRenderer.invoke('project:preview-ports', selection),
   toolStatus: () => ipcRenderer.invoke('tools:status'),
   generate: (selection) => ipcRenderer.invoke('project:generate', selection),
+  startProject: (selection) => ipcRenderer.invoke('project:start', selection),
   cancelGenerate: () => ipcRenderer.invoke('project:cancel'),
   onGenerateEvent: (listener) => {
     const handler = (_: IpcRendererEvent, event: GenerateEvent) => listener(event);
