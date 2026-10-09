@@ -62,6 +62,17 @@ describe('şablonlar ve ihtiyaçlar', () => {
     assert.equal(next.database.sql, 'postgresql');
   });
 
+  it('Fullstack projede frontend\'siz şablon seçilince frontend korunur (tür değişmez)', () => {
+    const sel = withFrontend(baseSelection(), 'vue', ['pinia']);
+    const next = applyPreset(sel, 'secure-api');
+    assert.deepEqual(next.frontend, { framework: 'vue', options: ['pinia'] });
+    assert.equal(next.needs.security, 'jwt');
+  });
+
+  it('REST API projesinde frontend\'siz şablon frontend eklemez', () => {
+    assert.equal(applyPreset(baseSelection(), 'rest-api').frontend.framework, null);
+  });
+
   it('JWT güvenliği Spring Security ve resource server ekler', () => {
     const resolved = resolve(setNeed(baseSelection(), 'security', 'jwt'));
     assert.ok(resolved.dependencies.includes('security'));

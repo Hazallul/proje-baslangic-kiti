@@ -1,5 +1,7 @@
 /** Kullanıcının yaptığı tüm seçimler. Arayüz, CLI ve kayıtlı şablonlar bu yapıyı paylaşır. */
 export interface Selection {
+  /** Projenin yığını. Eski kayıtlarda alan yoksa 'spring' sayılır (Spring Boot ve/veya frontend). */
+  stack?: Stack;
   name: string;
   /** Projenin oluşturulacağı üst klasör */
   location: string;
@@ -8,11 +10,14 @@ export interface Selection {
   needs: Record<string, string>;
   database: DatabaseSelection;
   frontend: FrontendSelection;
+  python: PythonSelection;
   /** Ek Docker servisleri (veritabanı container'ları bunlara dahil değil, otomatik eklenir) */
   services: string[];
   git: boolean;
   /** Genel git kimliği yoksa ilk commit için kullanılır (sadece bu depoya yazılır) */
   gitAuthor?: { name: string; email: string };
+  /** İlk commit'ten sonra nereye gönderileceği (git kapalıysa yok sayılır) */
+  gitRemote: GitRemote;
   /** Oluşturduktan sonra docker compose ile başlat */
   start: boolean;
 }
@@ -29,10 +34,31 @@ export interface BackendSelection {
   libraries: string[];
 }
 
+export interface GitRemote {
+  /** local: sadece bu bilgisayarda; url: elle açılmış boş bir depoya gönder; github: GitHub'da yeni depo aç */
+  mode: 'local' | 'url' | 'github';
+  /** mode 'url' iken deponun adresi */
+  url: string;
+  /** mode 'github' iken depo gizli mi */
+  private: boolean;
+}
+
 export type BuildTool = 'maven' | 'gradle';
 
-/** Arayüzdeki "Proje türü" seçimi; backend.enabled ve frontend.framework'ten hesaplanır */
-export type ProjectKind = 'fullstack' | 'backend' | 'frontend';
+export type Stack = 'spring' | 'python';
+
+/** Açılış ekranındaki proje türü; stack, backend.enabled ve frontend.framework'ten hesaplanır */
+export type ProjectKind = 'fullstack' | 'backend' | 'frontend' | 'python';
+
+export type PythonTemplate = 'game' | 'api' | 'cli';
+
+export interface PythonSelection {
+  template: PythonTemplate;
+  /** Şablona eklenen seçenekler (ai, tests, lint, exe, docker); şablonda olmayanlar yok sayılır */
+  options: string[];
+  /** Oluşturunca .venv sanal ortamını kurup paketleri indir */
+  install: boolean;
+}
 
 export interface DatabaseSelection {
   /** En fazla bir ilişkisel veritabanı (Spring tek datasource otomatik yapılandırır) */
@@ -69,7 +95,8 @@ export type GenerateEvent =
   | { type: 'log'; text: string }
   | { type: 'info'; message: string };
 
-export type StepId = 'backend' | 'frontend' | 'docker-files' | 'git' | 'docker-build' | 'services';
+export type StepId =
+  | 'backend' | 'frontend' | 'docker-files' | 'python-files' | 'python-env' | 'git' | 'git-push' | 'docker-build' | 'services';
 
 export interface PortAssignment {
   /** Örn. "BACKEND_PORT" */
@@ -88,4 +115,8 @@ export interface GenerateResult {
   warnings: string[];
   /** .env'e yazılan kullanıcı adları ve şifreler (portlar hariç) */
   credentials: { key: string; value: string }[];
+  /** Bitiş ekranında gösterilecek komutlar (Python projesini çalıştırma gibi) */
+  commands?: { label: string; command: string }[];
+  /** Proje bir uzak depoya gönderildiyse deponun web adresi */
+  repoUrl?: string;
 }

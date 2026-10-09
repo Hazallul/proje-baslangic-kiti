@@ -1,8 +1,9 @@
 import { DATABASES, findDatabase } from './catalog/databases.js';
 import { findFramework, OPTION_GROUPS } from './catalog/frontend.js';
 import { findNeed, findVariant, NEEDS } from './catalog/needs.js';
+import { findPythonTemplate, PYTHON_RESERVED, pythonPackageName } from './catalog/python.js';
 import { findService, SERVICES, type ServiceDef } from './catalog/services.js';
-import type { FrameworkId, ProjectKind, ResolvedProject, Selection } from './types.js';
+import type { FrameworkId, ProjectKind, PythonTemplate, ResolvedProject, Selection } from './types.js';
 
 export const NAME_PATTERN = /^[a-z][a-z0-9-]*$/;
 export const GROUP_PATTERN = /^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$/;
@@ -15,15 +16,36 @@ const JAVA_KEYWORDS = new Set(('abstract assert boolean break byte case catch ch
 
 export function defaultSelection(): Selection {
   return {
+    stack: 'spring',
     name: 'my-app',
     location: '',
     backend: { enabled: true, groupId: 'com.example', javaVersion: '21', buildTool: 'maven', dependencies: [], libraries: [] },
     needs: {},
     database: { sql: null, nosql: [], migration: 'flyway' },
     frontend: { framework: null, options: [] },
+    python: { template: 'game', options: [...findPythonTemplate('game').defaultOptions], install: true },
     services: [],
     git: true,
+    gitRemote: { mode: 'local', url: '', private: true },
     start: true,
+  };
+}
+
+/**
+ * Kayıtlı (eski sürümden kalmış olabilecek) ya da elle yazılmış bir seçimi bugünkü yapıyla birleştirir:
+ * iç içe alanlarda eksik olanlar varsayılan değerini alır.
+ */
+export function withDefaults(saved: Partial<Selection> | null | undefined): Selection {
+  const base = defaultSelection();
+  if (!saved) return base;
+  return {
+    ...base,
+    ...saved,
+    backend: { ...base.backend, ...saved.backend },
+    database: { ...base.database, ...saved.database },
+    frontend: { ...base.frontend, ...saved.frontend },
+    python: { ...base.python, ...saved.python },
+    gitRemote: { ...base.gitRemote, ...saved.gitRemote },
   };
 }
 
@@ -53,7 +75,7 @@ export const PRESETS: PresetDef[] = [
   },
   {
     id: 'rest-api',
-    label: 'REST API',
+    label: 'Dokümanlı API',
     description: 'Doğrulama, Swagger, sağlık kontrolü, Lombok',
     needs: restNeeds,
     dependencies: ['lombok'],
@@ -61,8 +83,8 @@ export const PRESETS: PresetDef[] = [
   },
   {
     id: 'fullstack',
-    label: 'Fullstack web',
-    description: 'REST API + React, Tailwind, Router',
+    label: 'API + React',
+    description: 'Dokümanlı API + React, Tailwind, Router',
     needs: restNeeds,
     dependencies: ['lombok'],
     frontend: { framework: 'react', options: ['tailwind', 'react-router', 'axios'] },
@@ -85,16 +107,22 @@ export const PRESETS: PresetDef[] = [
   },
 ];
 
-/** Şablonu uygular. Ad, konum, Java ayarları ve veritabanı seçimi korunur. */
+/**
+ * Şablonu uygular. Ad, konum, Java ayarları ve veritabanı seçimi korunur. Fullstack projede
+ * frontend'i olmayan bir şablon (ör. REST API) seçilirse mevcut frontend kalır: şablon backend'i
+ * hazırlar, kullanıcının seçtiği proje türünü değiştirmez.
+ */
 export function applyPreset(sel: Selection, presetId: string): Selection {
   const preset = PRESETS.find((p) => p.id === presetId);
   if (!preset) throw new Error(`Bilinmeyen şablon: ${presetId}`);
+  const keepFrontend = !preset.frontend.framework && projectKindOf(sel) === 'fullstack';
 
   let next: Selection = {
     ...sel,
+    stack: 'spring',
     backend: { ...sel.backend, enabled: true, dependencies: [...preset.dependencies], libraries: [] },
     needs: {},
-    frontend: { framework: preset.frontend.framework, options: [...preset.frontend.options] },
+    frontend: keepFrontend ? sel.frontend : { framework: preset.frontend.framework, options: [...preset.frontend.options] },
     services: [],
   };
   for (const [needId, variantId] of Object.entries(preset.needs)) {
@@ -107,12 +135,17 @@ export function applyPreset(sel: Selection, presetId: string): Selection {
 // Proje türü
 // ---------------------------------------------------------------------------
 
+export function isPython(sel: Selection): boolean {
+  return sel.stack === 'python';
+}
+
 /** Projede Spring Boot backend var mı? (Eski kayıtlarda alan yoksa var sayılır) */
 export function hasBackend(sel: Selection): boolean {
-  return sel.backend.enabled !== false;
+  return !isPython(sel) && sel.backend.enabled !== false;
 }
 
 export function projectKindOf(sel: Selection): ProjectKind {
+  if (isPython(sel)) return 'python';
   if (!hasBackend(sel)) return 'frontend';
   return sel.frontend.framework ? 'fullstack' : 'backend';
 }
@@ -120,14 +153,47 @@ export function projectKindOf(sel: Selection): ProjectKind {
 /**
  * Proje türünü değiştirir; frontend gerekiyorsa ve seçili değilse React seçilir.
  * Yayınlama seçenekleri (Vercel) sadece backend'siz projede anlamlı, backend açılınca kaldırılır.
+ * Python'a geçmek Spring tarafındaki seçimleri silmez; geri dönünce yerinde durur.
  */
 export function setProjectKind(sel: Selection, kind: ProjectKind): Selection {
+  if (kind === 'python') return { ...sel, stack: 'python' };
+  sel = { ...sel, stack: 'spring' };
   const backend = { ...sel.backend, enabled: kind !== 'frontend' };
   if (kind === 'backend') return { ...sel, backend, frontend: { framework: null, options: [] } };
   const framework = sel.frontend.framework ?? 'react';
   const deploy = new Set(findFramework(framework).options.filter((o) => o.group === 'deploy').map((o) => o.id));
   const options = kind === 'frontend' ? sel.frontend.options : sel.frontend.options.filter((o) => !deploy.has(o));
   return { ...sel, backend, frontend: { framework, options } };
+}
+
+// ---------------------------------------------------------------------------
+// Python
+// ---------------------------------------------------------------------------
+
+/**
+ * Şablonu değiştirir. Yeni şablonda da olan seçenekler korunur; eski şablonda hiç olmayan
+ * ama yeni şablonun varsayılanı olan seçenekler (ör. konsol uygulamasında exe) eklenir.
+ */
+export function setPythonTemplate(sel: Selection, template: PythonTemplate): Selection {
+  const previous = findPythonTemplate(sel.python.template);
+  const next = findPythonTemplate(template);
+  const kept = sel.python.options.filter((o) => next.options.includes(o));
+  const added = next.defaultOptions.filter((o) => !previous.options.includes(o) && !kept.includes(o));
+  return { ...sel, python: { ...sel.python, template, options: [...kept, ...added] } };
+}
+
+export function togglePythonOption(sel: Selection, optionId: string): Selection {
+  if (!findPythonTemplate(sel.python.template).options.includes(optionId)) return sel;
+  const options = sel.python.options.includes(optionId)
+    ? sel.python.options.filter((o) => o !== optionId)
+    : [...sel.python.options, optionId];
+  return { ...sel, python: { ...sel.python, options } };
+}
+
+/** Şablonda gerçekten bulunan seçenekler (eski kayıtlardaki geçersizler ayıklanır) */
+export function pythonOptionsOf(sel: Selection): Set<string> {
+  const available = findPythonTemplate(sel.python.template).options;
+  return new Set(sel.python.options.filter((o) => available.includes(o)));
 }
 
 // ---------------------------------------------------------------------------
@@ -247,7 +313,7 @@ export function resolve(sel: Selection): ResolvedProject {
     if (!sources[id]) sources[id] = source;
   };
 
-  // Sadece frontend projesinde backend tarafından hiçbir şey üretilmez
+  // Sadece frontend ve Python projelerinde Spring tarafından hiçbir şey üretilmez
   if (!hasBackend(sel)) {
     return {
       selection: sel,
@@ -256,7 +322,7 @@ export function resolve(sel: Selection): ResolvedProject {
       libraries: [],
       databases: [],
       services: [],
-      frontendOptions: sel.frontend.options,
+      frontendOptions: isPython(sel) ? [] : sel.frontend.options,
     };
   }
 
@@ -319,8 +385,20 @@ export function availableServices(resolved: ResolvedProject): ServiceDef[] {
   return SERVICES.filter((s) => !s.forDatabases || s.forDatabases.some((d) => resolved.databases.includes(d)));
 }
 
+/**
+ * Uzak depo adresi: https://sunucu/kullanıcı/depo(.git) ya da git@sunucu:kullanıcı/depo(.git).
+ * Komut satırına gideceği için boşluk, tırnak ve kabuk karakterlerine izin verilmez.
+ */
+export const REMOTE_URL_PATTERN = /^(https:\/\/[A-Za-z0-9.-]+(:\d+)?\/[A-Za-z0-9._~-]+\/[A-Za-z0-9._~/-]+|git@[A-Za-z0-9.-]+:[A-Za-z0-9._~-]+\/[A-Za-z0-9._~/-]+)$/;
+
+/** GitHub depo adresinin tarayıcıda açılan hali (GitHub değilse null) */
+export function repoWebUrl(url: string): string | null {
+  const match = /^(?:https:\/\/github\.com\/|git@github\.com:)([^/]+\/[^/]+?)(?:\.git)?\/?$/.exec(url.trim());
+  return match ? `https://github.com/${match[1]}` : null;
+}
+
 export interface ValidationIssue {
-  field: 'name' | 'location' | 'groupId' | 'frontend';
+  field: 'name' | 'location' | 'groupId' | 'frontend' | 'remote';
   message: string;
 }
 
@@ -331,13 +409,23 @@ export function validate(sel: Selection): ValidationIssue[] {
     issues.push({ field: 'name', message: 'Küçük harfle başlamalı; sadece küçük harf, rakam ve tire kullanılabilir' });
   } else if (sel.name.endsWith('-')) {
     issues.push({ field: 'name', message: 'Proje adı tireyle bitemez' });
-  } else if (JAVA_KEYWORDS.has(sel.name.replace(/-/g, ''))) {
+  } else if (isPython(sel) && PYTHON_RESERVED.has(pythonPackageName(sel.name))) {
+    issues.push({ field: 'name', message: `"${sel.name}" Python'da bir modül ya da ayrılmış kelime; paket adı olunca onu gölgeler` });
+  } else if (hasBackend(sel) && JAVA_KEYWORDS.has(sel.name.replace(/-/g, ''))) {
     issues.push({ field: 'name', message: `"${sel.name}" Java'da ayrılmış bir kelime, paket adı olamaz` });
   }
   if (!sel.location) issues.push({ field: 'location', message: 'Projenin oluşturulacağı klasörü seç' });
   else if (!/^([a-zA-Z]:[\\/]|\/|\\\\)/.test(sel.location)) {
     issues.push({ field: 'location', message: 'Konum tam bir klasör yolu olmalı (örn. C:\\Projeler)' });
   }
+  if (sel.git && sel.gitRemote.mode === 'url') {
+    const url = sel.gitRemote.url.trim();
+    if (!url) issues.push({ field: 'remote', message: 'Gönderilecek deponun adresini yapıştır' });
+    else if (!REMOTE_URL_PATTERN.test(url)) {
+      issues.push({ field: 'remote', message: 'Depo adresi https://github.com/kullanici/depo.git gibi olmalı' });
+    }
+  }
+  if (isPython(sel)) return issues;
   if (!hasBackend(sel) && !sel.frontend.framework) {
     issues.push({ field: 'frontend', message: 'Sadece frontend projesi için bir framework seç' });
   }

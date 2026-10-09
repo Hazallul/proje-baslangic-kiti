@@ -2,7 +2,9 @@ import type { InitializrCatalog } from '../../core/initializr';
 import type { GenerateEvent, StepId } from '../../core/types';
 import type { AppApi, Settings } from '../../shared/bridge';
 import snapshot from '../../core/data/initializr-snapshot.json';
-import { resolve } from '../../core/selection';
+import { pythonCommands, pythonContext } from '../../core/generate/python-files';
+import { isPython, resolve } from '../../core/selection';
+import { planSteps } from '../../core/steps';
 import { previewPorts } from './tree';
 
 /**
@@ -59,33 +61,37 @@ export function createMockApi(): AppApi {
       node: true,
       git: true,
       gitIdentity: !new URLSearchParams(location.search).has('nogitid'),
+      python: new URLSearchParams(location.search).has('nopython') ? null : '3.13.15',
+      github: new URLSearchParams(location.search).has('nogithub') ? null : 'Hazallul',
     }),
     generate: async (sel) => {
       cancelled = false;
-      const steps: StepId[] = ['backend', 'frontend', 'docker-files', 'git', 'docker-build', 'services'];
-      for (const step of steps) {
+      const messages: Partial<Record<StepId, string>> = {
+        git: 'İlk commit atıldı',
+        'git-push': 'main dalı gönderildi',
+        'python-files': '23 dosya',
+        'python-env': 'Python 3.13.15, paketler kuruldu, 5 test geçti',
+      };
+      for (const step of planSteps(sel)) {
         if (cancelled) return { ok: false, cancelled: true, message: 'İşlem iptal edildi' };
-        if (step === 'backend' && sel.backend.enabled === false) {
-          emit({ type: 'step', step, status: 'skipped', message: 'Sadece frontend projesi' });
-          continue;
-        }
-        if (step === 'frontend' && !sel.frontend.framework) {
-          emit({ type: 'step', step, status: 'skipped', message: 'Frontend seçilmedi' });
-          continue;
-        }
         emit({ type: 'step', step, status: 'running' });
         for (let i = 0; i < 6; i++) {
           emit({ type: 'log', text: `[${step}] adım ${i + 1}/6 tamamlandı\n` });
-          await wait(step === 'docker-build' ? 500 : 200);
+          await wait(step === 'docker-build' || step === 'python-env' ? 500 : 200);
         }
         if (fail === step) {
           emit({ type: 'step', step, status: 'error', message: '"docker compose build" başarısız oldu (çıkış kodu 1)' });
           return { ok: false, cancelled: false, message: '"docker compose build" başarısız oldu (çıkış kodu 1)' };
         }
         if (step === 'docker-files') emit({ type: 'info', message: '3306 kullanımda, MySQL için 3307 seçildi' });
-        emit({ type: 'step', step, status: 'done', message: step === 'git' ? 'İlk commit atıldı' : undefined });
+        emit({ type: 'step', step, status: 'done', message: messages[step] });
       }
       const dir = `${sel.location}\\${sel.name}`;
+      if (isPython(sel)) {
+        const commands = pythonCommands(pythonContext(sel, true));
+        const repoUrl = sel.git && sel.gitRemote.mode !== 'local' ? `https://github.com/Hazallul/${sel.name}` : undefined;
+        return { ok: true, result: { projectDir: dir, ports: [], started: false, warnings: [], credentials: [], commands, repoUrl }, links: [] };
+      }
       return {
         ok: true,
         result: {

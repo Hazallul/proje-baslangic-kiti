@@ -1,7 +1,8 @@
 import { findDatabase } from '../../core/catalog/databases';
 import { findFramework } from '../../core/catalog/frontend';
 import { findService } from '../../core/catalog/services';
-import { hasBackend } from '../../core/selection';
+import { pythonContext, pythonFiles } from '../../core/generate/python-files';
+import { hasBackend, isPython } from '../../core/selection';
 import type { ResolvedProject } from '../../core/types';
 
 export interface TreeNode {
@@ -22,9 +23,60 @@ function pascal(name: string): string {
   return name.split('-').map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join('');
 }
 
+/** Arayüz Windows'ta mı çalışıyor (Python sanal ortam yolları buna göre) */
+const WINDOWS = navigator.userAgent.includes('Windows');
+
+/** Python dosyalarına önizlemede eklenen kısa notlar */
+const PYTHON_NOTES: Record<string, string> = {
+  'requirements.txt': 'paketler',
+  'requirements-dev.txt': 'test, lint, paketleme',
+  '.env': 'API anahtarı',
+  'build_exe.py': '.exe üretir',
+  'launch.json': 'F5 ile çalıştır',
+  'game.py': 'pygame penceresi',
+  'simulation.py': 'saat, karakterler',
+  'world.py': 'harita, yol bulma',
+  'agent.py': 'karakter',
+  'brain.py': 'Claude ile düşünme',
+  'ai.py': 'Claude yardımcısı',
+  'main.py': 'FastAPI uygulaması',
+  'routes.py': 'uç noktalar',
+  'cli.py': 'komutlar',
+};
+
+/** Göreli dosya yollarından klasör ağacı; klasörler önce, sonra dosyalar, ikisi de alfabetik */
+function treeFromPaths(root: string, paths: string[], notes: Record<string, string>): TreeNode {
+  const top: TreeNode = { name: `${root}/`, children: [] };
+  for (const path of paths) {
+    const parts = path.split('/');
+    let node = top;
+    parts.forEach((part, i) => {
+      const leaf = i === parts.length - 1;
+      const name = leaf ? part : `${part}/`;
+      let child = node.children!.find((c) => c.name === name);
+      if (!child) {
+        child = leaf ? { name, note: notes[part] } : { name, children: [] };
+        node.children!.push(child);
+      }
+      node = child;
+    });
+  }
+  const sort = (node: TreeNode) => {
+    node.children?.sort((a, b) => Number(!a.children) - Number(!b.children) || a.name.localeCompare(b.name));
+    node.children?.forEach(sort);
+  };
+  sort(top);
+  return top;
+}
+
 /** Oluşturulacak projenin özet klasör ağacı (gerçek çıktıyla aynı adlar) */
 export function buildTree(resolved: ResolvedProject): TreeNode {
   const sel = resolved.selection;
+  if (isPython(sel)) {
+    const tree = treeFromPaths(sel.name || 'my-app', Object.keys(pythonFiles(pythonContext(sel, WINDOWS))), PYTHON_NOTES);
+    if (sel.python.install) tree.children!.unshift({ name: '.venv/', note: 'sanal ortam', children: [] });
+    return tree;
+  }
   const name = sel.name || 'my-app';
   const pkgPath = `${sel.backend.groupId}.${name.replace(/[^a-z0-9]/g, '')}`.replaceAll('.', '/');
   const security = sel.needs.security;

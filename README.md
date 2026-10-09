@@ -1,9 +1,11 @@
 # create-hazal-app
 
-Spring Boot projelerini **start.spring.io'ya girmeden** kuran masaüstü uygulaması ve CLI.
-Backend'i Spring Initializr'ın güncel kataloğundan indirir; isteğe bağlı olarak frontend'i resmi araçlarıyla oluşturur,
-veritabanı ve ek servisleri Docker Compose'a ekler ve her şeyi tek tıkla ayağa kaldırır.
-Backend gerekmeyen siteler (portfolyo, tanıtım sayfası) için **sadece frontend** projesi de oluşturur.
+Yeni bir projeye **başka bir siteye ya da sihirbaza girmeden** başlatan masaüstü uygulaması ve CLI.
+Açılışta ne kurduğunu sorar: **Fullstack web**, **REST API** (Spring Boot), **Web sitesi** (sadece frontend) ya da
+**Python** (oyun/simülasyon, FastAPI, konsol uygulaması). Spring tarafında backend'i Spring Initializr'ın güncel
+kataloğundan indirir, frontend'i resmi araçlarıyla oluşturur, veritabanı ve ek servisleri Docker Compose'a ekler ve her
+şeyi tek tıkla ayağa kaldırır. Python tarafında sanal ortamı kurar, paketleri indirir, örnek testleri çalıştırır ve
+VS Code'da F5 ile çalışacak şekilde teslim eder.
 
 ![Uygulama ikonu](build/icon.png)
 
@@ -19,6 +21,21 @@ Backend gerekmeyen siteler (portfolyo, tanıtım sayfası) için **sadece fronte
 | Başlangıç sayfası | Frontend boş gelmez: bağlantı durumunu gösteren ve backend'e "merhaba dünya" isteği atan bir sayfa, seçilen UI kütüphanesinin bileşenleriyle |
 | Proje türü | Fullstack, sadece backend veya sadece frontend. Sadece frontend projesinde Spring Boot, veritabanı ve servisler üretilmez; isteğe bağlı `vercel.json` ile ücretsiz yayına hazır gelir |
 | Yerel geliştirme | Backend IDE'den çalıştırılınca şifreleri ve portları `.env`'den okur; frontend container'ı `API_URL` ile bilgisayardaki backend'e yönlendirilebilir |
+| Python | Şablon dosyaları, `.venv` + paket kurulumu, testlerin bir kez çalıştırılması, `.vscode` (yorumlayıcı, F5, test paneli), git |
+
+## Python projeleri
+
+| Şablon | İçinde | Seçenekler |
+|---|---|---|
+| Oyun / simülasyon | pygame-ce ile pixel-art kasaba haritası, kendi kendine dolaşan karakterler, gün/gece saati, kamera, karakter seçme. Simülasyon mantığı (`world.py`, `agent.py`, `simulation.py`) pygame'den ayrı, test edilebilir | Claude ile AI (karakterlere arka planda düşündürme), pytest, Ruff, .exe |
+| API (FastAPI) | Örnek CRUD uç noktaları, Pydantic şemaları, Swagger (`/docs`) | Claude ile AI (`POST /api/ask`), pytest, Ruff, Dockerfile + compose |
+| Konsol uygulaması | argparse ile alt komutlar | Claude ile AI (`sor` komutu), pytest, Ruff, .exe (PyInstaller) |
+
+- **Claude ile AI** seçilince `ai.py` gelir: `ask(prompt)` fonksiyonu Anthropic SDK ile Claude'a sorar, anahtarı `.env`'den okur,
+  hataları (anahtar yok/geçersiz, bağlantı, sınır) sade mesajlara çevirir.
+- Python 3.10+ gerekir. Bulunamazsa dosyalar yine oluşur, bitiş ekranı kurulum komutlarını gösterir.
+- **Smart App Control** açık Windows'ta imzasız paket dosyaları (ör. `pydantic-core`, `ruff.exe`) engellenebilir. Araç bunu
+  tanır ve uyarır; proje dosyaları doğrudur, engel kalkınca ya da Docker içinde çalışır.
 
 ## Seçim katmanları
 
@@ -50,10 +67,11 @@ Motion seçilince kartlar yaylanarak gelir. Vercel seçeneği sadece backend'siz
 ```
 src/
 ├── core/            Arayüzden bağımsız motor (CLI ve masaüstü aynı kodu kullanır)
-│   ├── catalog/     Veritabanı, servis, ihtiyaç, frontend katalogları (yeni kayıt = yeni seçenek)
+│   ├── catalog/     Veritabanı, servis, ihtiyaç, frontend ve Python katalogları (yeni kayıt = yeni seçenek)
 │   ├── selection.ts Seçim kuralları: şablon uygulama, bağımlılık çözümleme, öneriler, doğrulama
 │   ├── initializr.ts Canlı katalog, önbellek, proje indirme
-│   └── generate/    Backend, frontend, compose/.env/README üretimi ve adım adım orkestrasyon
+│   ├── steps.ts     Seçime göre çalışacak adımlar (arayüz ve CLI aynı listeyi gösterir)
+│   └── generate/    Backend, frontend, compose/.env/README, Python dosyaları (python-files.ts, saf) ve orkestrasyon
 ├── main/            Electron ana süreci (IPC, klasör seçme, iptal, VS Code'da açma)
 ├── preload/         Arayüze güvenli köprü (contextIsolation + sandbox)
 ├── renderer/        React + Tailwind arayüzü
@@ -75,7 +93,24 @@ Yeni bir veritabanı veya servis eklemek için `src/core/catalog/` altındaki li
 ```bash
 npx create-hazal-app                    # adım adım sorar
 npx create-hazal-app my-app --config secimler.json   # soru sormadan
+npx create-hazal-app my-app --github    # GitHub'da yeni gizli depo açıp gönderir (--public ile açık)
+npx create-hazal-app my-app --remote https://github.com/kullanici/depo.git
 ```
+
+### Git ve GitHub
+
+İlk commit bilgisayardaki git kimliğiyle (`git config --global user.name / user.email`) atılır; hesap
+sorulmaz. Kurulum bölümünde üç seçenek var:
+
+| Seçenek | Ne olur |
+|---|---|
+| Sadece bu bilgisayarda | `git init` ve ilk commit, uzak depo yok |
+| GitHub'da yeni depo aç | Proje adıyla gizli ya da açık depo açılır, `main` gönderilir |
+| Açtığım depoya gönder | GitHub'da elle açılan **boş** deponun adresi yapıştırılır, `main` oraya gönderilir |
+
+İkisi de terminaldeki git'in kayıtlı girişini kullanır (Windows'ta Git Credential Manager): bir kez
+`git push` ile giriş yapılmışsa ayrıca token ya da `gh` gerekmez. Gönderim başarısız olursa proje yerelde
+hazırdır; bitiş ekranı sebebini ve elle gönderme komutunu yazar.
 
 **Gereksinimler:** Docker Desktop, Node.js 20+ (frontend için), Git (isteğe bağlı), internet (start.spring.io ve npm için).
 
@@ -88,6 +123,7 @@ npm start            # derleyip Electron'u açar
 npm run ui           # arayüzü tarayıcıda açar (sahte API ile)
 npm run update       # arayüzü Docker'da + Electron tarafını derler (Smart App Control açıksa bunu kullan)
 npm test             # motorun birim testleri (Node'un yerleşik test aracı, ek paket gerekmez)
+npm run verify:python -- --docker   # her Python şablonunu üretip container'da test + ruff + duman testi çalıştırır
 npm run dist:win     # Windows kurulum dosyası (release/), başka bilgisayarlar için
 ```
 
@@ -105,6 +141,11 @@ sayfalarını ve yardımcı fonksiyonları kontrol eder; GitHub Actions her push
 `npm run verify:frontends` her framework ve UI kütüphanesi kombinasyonu için frontend'i gerçekten üretip Docker'da
 `npm run build` (+ Vitest ve ESLint) ile derler. Son çalıştırmada hepsi geçti: React (düz, Tailwind, shadcn/ui, MUI, Ant Design, Mantine),
 Vue (düz, Tailwind, Vuetify, PrimeVue, Element Plus), Angular (düz, Material + Tailwind, PrimeNG), Svelte (düz, Tailwind).
+
+`npm run verify:python` her Python şablonunu (tam ve en sade seçeneklerle) gerçekten üretir, sanal ortamı kurar ve üretilen
+projede `pytest`, `ruff check`, `ruff format --check` ve şablona özel bir duman testi çalıştırır (oyun: pencere açmadan bir kare
+çizer, API: Swagger ve uç noktalar, konsol: komut). `--docker` aynı kontrolleri `python:3.13-slim` içinde yapar, `--exe` .exe'yi de üretir.
+Son çalıştırmada altı varyantın hepsi geçti; oyun ve konsol .exe'leri de üretildi.
 
 ## Test edilen senaryolar
 

@@ -6,16 +6,18 @@ import { DATABASES } from '../../../core/catalog/databases';
 import { FRAMEWORK_HELP, FRONTEND_OPTION_HELP, NEED_HELP, SERVICE_HELP, VARIANT_HELP } from '../../../core/catalog/help';
 import { FRAMEWORKS, findFramework, OPTION_GROUPS, type OptionGroup } from '../../../core/catalog/frontend';
 import { NEEDS } from '../../../core/catalog/needs';
+import { findPythonOption, findPythonTemplate, PYTHON_TEMPLATES } from '../../../core/catalog/python';
 import { findService, SERVICES } from '../../../core/catalog/services';
 import { useEffect, useRef, useState } from 'react';
 import type { InitializrCatalog } from '../../../core/initializr';
 import {
-  availableServices, hasBackend, PRESETS, projectKindOf, setFramework, setNeed, setProjectKind, setSqlDatabase,
-  suggestedServices, toggleFrontendOption,
-  toggleNoSqlDatabase, toggleService, type ValidationIssue,
+  availableServices, hasBackend, isPython, PRESETS, projectKindOf, pythonOptionsOf, setFramework, setNeed,
+  setPythonTemplate, setSqlDatabase, suggestedServices, toggleFrontendOption, toggleNoSqlDatabase, togglePythonOption,
+  toggleService, type ValidationIssue,
 } from '../../../core/selection';
-import type { FrameworkId, ProjectKind, ResolvedProject, Selection } from '../../../core/types';
+import type { FrameworkId, ResolvedProject, Selection } from '../../../core/types';
 import type { SavedTemplate, ToolStatus } from '../../../shared/bridge';
+import { findKit } from '../kits';
 import { Checkbox, cx, FieldLabel, HelpPopover, inputClass, Mark, Section, Segmented, Tag, Toggle } from '../ui';
 import { PackagesSection } from './PackagesSection';
 import { type PreviewTarget, PreviewPanel, ServiceThumb } from './PreviewPanel';
@@ -25,12 +27,6 @@ const NEED_ICONS: Record<string, LucideIcon> = {
   shield: Shield, 'check-check': CheckCheck, 'book-open': BookOpen, zap: Zap, 'messages-square': MessagesSquare,
   activity: Activity, mail: Mail, radio: Radio, 'share-2': Share2, clock: Clock,
 };
-
-const PROJECT_KINDS: { value: ProjectKind; label: string; hint: string }[] = [
-  { value: 'fullstack', label: 'Fullstack', hint: 'Spring Boot backend ve frontend, aynı Docker Compose içinde.' },
-  { value: 'backend', label: 'Sadece backend', hint: 'Spring Boot API; arayüz yok.' },
-  { value: 'frontend', label: 'Sadece frontend', hint: 'Backend olmadan bir site: portfolyo, tanıtım sayfası gibi. Vercel\'e yayınlanabilir.' },
-];
 
 const FRAMEWORK_DETAIL: Record<FrameworkId, string> = {
   react: '19 · TS · Vite',
@@ -92,12 +88,15 @@ export function ConfigView(props: ConfigViewProps) {
   const sectionProps: SectionProps = { ...props, pv };
   const goToFrontend = () => document.getElementById('frontend')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   const backend = hasBackend(props.sel);
+  const python = isPython(props.sel);
+  // Python'da önizlenecek bir arayüz yok; form ortada tek sütun
+  const showPanel = wide && !python;
 
   return (
     // Genişlik yetince önizleme formun solunda sabit durur; dar pencerede Frontend bölümünün içine iner
     <div ref={ref}>
-      <div className={cx('mx-auto flex justify-center gap-6 px-6', wide ? 'max-w-[1180px]' : 'max-w-[784px]')}>
-        {wide && (
+      <div className={cx('mx-auto flex justify-center gap-6 px-6', showPanel ? 'max-w-[1180px]' : 'max-w-[784px]')}>
+        {showPanel && (
           <aside className="w-[380px] shrink-0" aria-label="Önizleme">
             <div className="sticky top-0 max-h-[calc(100vh-110px)] overflow-y-auto py-5">
               <PreviewPanel
@@ -112,7 +111,14 @@ export function ConfigView(props: ConfigViewProps) {
           </aside>
         )}
         <div className="min-w-0 max-w-[720px] flex-1 pb-10">
+          <KitHeader sel={props.sel} />
           <ProjectSection {...sectionProps} />
+          {python && (
+            <>
+              <PythonTemplateSection {...sectionProps} />
+              <PythonOptionsSection {...sectionProps} />
+            </>
+          )}
           {backend && (
             <>
               <PresetSection {...sectionProps} />
@@ -120,7 +126,7 @@ export function ConfigView(props: ConfigViewProps) {
               <DatabaseSection {...sectionProps} />
             </>
           )}
-          <FrontendSection {...sectionProps} hoverKit={hoverKit} />
+          {!python && <FrontendSection {...sectionProps} hoverKit={hoverKit} />}
           {backend && (
             <>
               <ServicesSection {...sectionProps} />
@@ -136,11 +142,16 @@ export function ConfigView(props: ConfigViewProps) {
 
 // ---------------------------------------------------------------------------
 
+/** Ad alanında silik görünen örnekler; sadece ipucu, değer olarak yazılmaz */
+const NAME_EXAMPLES = ['milyon-dolarlik-fikir', 'bu-sefer-bitecek', 'hafta-sonu-projesi', 'yeni-unicorn', 'son-final-v2'];
+
 function ProjectSection({ sel, update, issues, targetIssue, catalog, onPickFolder }: SectionProps) {
+  const [example] = useState(() => NAME_EXAMPLES[Math.floor(Math.random() * NAME_EXAMPLES.length)]);
   const nameIssue = issues.find((i) => i.field === 'name');
   const groupIssue = issues.find((i) => i.field === 'groupId');
   const locationIssue = issues.find((i) => i.field === 'location');
-  const nameError = nameIssue?.message ?? targetIssue;
+  // Boş ad henüz bir hata değil, yapılacak bir iş: kırmızı yerine nötr ipucu
+  const nameError = sel.name ? (nameIssue?.message ?? targetIssue) : null;
   const javaVersions = catalog?.javaVersions ?? ['17', '21', '25'];
   const backend = hasBackend(sel);
 
@@ -163,12 +174,15 @@ function ProjectSection({ sel, update, issues, targetIssue, catalog, onPickFolde
             autoFocus
             spellCheck={false}
             value={sel.name}
+            placeholder={example}
             onChange={(e) => update((s) => ({ ...s, name: e.target.value.toLowerCase().replace(/\s+/g, '-') }))}
-            className={cx(inputClass, nameError && 'border-danger focus:border-danger focus:ring-danger-soft')}
+            className={cx(inputClass, 'placeholder:text-fg-3/60', nameError && 'border-danger focus:border-danger focus:ring-danger-soft')}
             aria-invalid={!!nameError}
           />
           <p className={cx('mt-1.5 text-[12px]', nameError ? 'text-danger' : 'text-fg-3')}>
-            {nameError ?? 'Küçük harf, rakam ve tire. Örnek: siparis-takip'}
+            {nameError ?? (isPython(sel)
+              ? `Küçük harf, rakam ve tire. Python paketi: ${sel.name.replace(/-/g, '_') || '…'}`
+              : 'Küçük harf, rakam ve tire.')}
           </p>
         </div>
 
@@ -203,17 +217,6 @@ function ProjectSection({ sel, update, issues, targetIssue, catalog, onPickFolde
               → {sel.location.replace(/[\\/]+$/, '')}\<span className="text-fg-2">{sel.name}</span>
             </p>
           )}
-        </div>
-
-        <div>
-          <FieldLabel>Proje türü</FieldLabel>
-          <Segmented
-            label="Proje türü"
-            value={projectKindOf(sel)}
-            onChange={(kind) => update((s) => setProjectKind(s, kind))}
-            options={PROJECT_KINDS}
-          />
-          <p className="mt-1.5 text-[12px] text-fg-3">{PROJECT_KINDS.find((k) => k.value === projectKindOf(sel))!.hint}</p>
         </div>
 
         {backend && <div className="flex flex-wrap items-end gap-3">
@@ -255,11 +258,15 @@ function ProjectSection({ sel, update, issues, targetIssue, catalog, onPickFolde
 
 // ---------------------------------------------------------------------------
 
-function PresetSection({ activePreset, templates, onApplyPreset, onApplyTemplate, onDeleteTemplate }: SectionProps) {
+function PresetSection({ sel, activePreset, templates, onApplyPreset, onApplyTemplate, onDeleteTemplate }: SectionProps) {
+  // Seçilen tür korunur: REST API'de frontend getiren şablon, her kitte başka türün kayıtlı şablonu gösterilmez
+  const kind = projectKindOf(sel);
+  const presets = PRESETS.filter((p) => kind !== 'backend' || !p.frontend.framework);
+  const ownTemplates = templates.filter((t) => projectKindOf(t.selection) === kind);
   return (
     <Section id="sablon" title="Hızlı başlangıç" meta="Seçince aşağıdaki her şey işaretlenir, sonra değiştirebilirsin">
       <div className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-2">
-        {PRESETS.map((p) => (
+        {presets.map((p) => (
           <button
             key={p.id}
             type="button"
@@ -273,7 +280,7 @@ function PresetSection({ activePreset, templates, onApplyPreset, onApplyTemplate
             <div className="mt-0.5 text-[11.5px] leading-snug text-fg-2">{p.description}</div>
           </button>
         ))}
-        {templates.map((t) => (
+        {ownTemplates.map((t) => (
           <div
             key={t.id}
             className={cx(
@@ -674,15 +681,130 @@ function ServicesSection({ sel, update, resolved, pv }: SectionProps) {
 
 // ---------------------------------------------------------------------------
 
-function OptionsSection({ sel, update, tools }: SectionProps) {
+/** Ayar sayfasının başı: hangi kitin kurulduğu, kit renginde */
+function KitHeader({ sel }: { sel: Selection }) {
+  const kit = findKit(projectKindOf(sel));
+  const Icon = kit.icon;
+  return (
+    <header className="flex items-center gap-3.5 pt-4">
+      <span
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
+        style={{ background: `var(--kit-${kit.id})`, color: kit.id === 'python' ? 'var(--kit-python-ink)' : '#fff' }}
+      >
+        <Icon size={21} strokeWidth={2.2} />
+      </span>
+      <div className="min-w-0">
+        <h1 className="font-display text-[26px] leading-tight font-bold text-fg">{kit.label}</h1>
+        <p className="truncate text-[13.5px] text-fg-2">{kit.tagline}</p>
+      </div>
+    </header>
+  );
+}
+
+function PythonTemplateSection({ sel, update }: SectionProps) {
+  return (
+    <Section id="sablon" title="Ne yapacaksın?" meta="Seçenekler şablona göre değişir">
+      <div role="radiogroup" aria-label="Python şablonu" className="grid grid-cols-3 gap-3">
+        {PYTHON_TEMPLATES.map((t) => {
+          const selected = sel.python.template === t.id;
+          return (
+            <HelpPopover key={t.id} title={t.label} help={t.help} className="flex min-w-0 [&>button]:w-full">
+              <button
+                type="button"
+                role="radio"
+                aria-checked={selected}
+                onClick={() => update((s) => setPythonTemplate(s, t.id))}
+                className={cx(
+                  'flex min-h-[148px] flex-col rounded-xl border p-3.5 text-left transition-colors duration-150',
+                  selected ? 'border-accent-line bg-accent-soft' : 'border-line bg-surface hover:border-line-strong',
+                )}
+              >
+                <div className="flex w-full items-start justify-between gap-2">
+                  <span className="font-display text-[17px] leading-tight font-bold text-fg">{t.label}</span>
+                  <Checkbox checked={selected} radio />
+                </div>
+                <p className="mt-1 text-[12.5px] leading-snug text-fg-2">{t.description}</p>
+                <div className="mt-auto flex flex-wrap gap-1 pt-3">
+                  {t.includes.map((part) => <Tag key={part}>{part}</Tag>)}
+                </div>
+              </button>
+            </HelpPopover>
+          );
+        })}
+      </div>
+    </Section>
+  );
+}
+
+function PythonOptionsSection({ sel, update }: SectionProps) {
+  const template = findPythonTemplate(sel.python.template);
+  const active = pythonOptionsOf(sel);
+  return (
+    <Section id="python-secenekler" title="Seçenekler" meta={`${active.size} seçili`}>
+      <ul className="divide-y divide-line rounded-xl border border-line bg-surface">
+        {template.options.map((id) => {
+          const option = findPythonOption(id);
+          const on = active.has(id);
+          return (
+            <li key={id}>
+              <button
+                type="button"
+                role="checkbox"
+                aria-checked={on}
+                onClick={() => update((s) => togglePythonOption(s, id))}
+                className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left hover:bg-surface-2/60"
+              >
+                <Checkbox checked={on} />
+                <HelpPopover title={option.label} help={option.help} className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 text-[13.5px] font-medium text-fg">
+                    {option.label}
+                    {option.help.level === 'Önerilir' && <Tag tone="ok">önerilir</Tag>}
+                  </div>
+                  <div className="truncate text-[12.5px] text-fg-2">{option.description}</div>
+                </HelpPopover>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </Section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+
+function OptionsSection({ sel, update, tools, issues }: SectionProps) {
   const dockerOff = tools && !tools.docker;
   const needsAuthor = Boolean(sel.git && tools && tools.git && !tools.gitIdentity);
   return (
-    <Section id="secenekler" title="Seçenekler">
+    <Section id="kurulum" title="Kurulum">
       <ul className="divide-y divide-line rounded-lg border border-line bg-surface">
+        {isPython(sel) ? (
+          <OptionRow
+            title="Sanal ortamı kur ve paketleri indir"
+            detail={!tools || tools.python
+              ? `.venv oluşturulur, paketler kurulur${pythonOptionsOf(sel).has('tests') ? ', testler bir kez çalıştırılır' : ''}`
+              : "Python 3.10+ bulunamadı. Proje yine oluşur; Python'u kurduktan sonra README'deki komutlarla kurarsın."}
+            warn={Boolean(tools && !tools.python && sel.python.install)}
+            checked={sel.python.install}
+            onChange={(v) => update((s) => ({ ...s, python: { ...s.python, install: v } }))}
+          />
+        ) : (
+          <OptionRow
+            title="Oluşturunca Docker ile başlat"
+            detail={dockerOff
+              ? 'Docker Desktop çalışmıyor. Proje yine oluşur, sonra kendin başlatabilirsin.'
+              : 'docker compose up; hazır olunca adresleri gösterir'}
+            warn={Boolean(dockerOff && sel.start)}
+            checked={sel.start}
+            onChange={(v) => update((s) => ({ ...s, start: v }))}
+          />
+        )}
         <OptionRow
           title="Git deposu başlat"
-          detail=".gitignore ve ilk commit ile"
+          detail={needsAuthor
+            ? 'İlk commit için bir kez ad ve e-posta gerekiyor'
+            : 'İlk commit bu bilgisayardaki git kimliğinle atılır, hesap sorulmaz'}
           checked={sel.git}
           onChange={(v) => update((s) => ({ ...s, git: v }))}
         />
@@ -710,17 +832,94 @@ function OptionsSection({ sel, update, tools }: SectionProps) {
             </div>
           </li>
         )}
-        <OptionRow
-          title="Oluşturunca Docker ile başlat"
-          detail={dockerOff
-            ? 'Docker Desktop çalışmıyor. Proje yine oluşur, sonra kendin başlatabilirsin.'
-            : 'docker compose up; hazır olunca adresleri gösterir'}
-          warn={Boolean(dockerOff && sel.start)}
-          checked={sel.start}
-          onChange={(v) => update((s) => ({ ...s, start: v }))}
-        />
+        {sel.git && <RemoteChooser sel={sel} update={update} tools={tools} issue={issues.find((i) => i.field === 'remote')} />}
       </ul>
     </Section>
+  );
+}
+
+/**
+ * İlk commit'ten sonra projenin nereye gideceği. Hepsi bilgisayardaki git'in kayıtlı girişini kullanır:
+ * "yeni depo" o girişle GitHub'da depo açar, "açtığım depo" ise kullanıcının elle açtığı boş depoya gönderir.
+ */
+function RemoteChooser({ sel, update, tools, issue }: Pick<SectionProps, 'sel' | 'update' | 'tools'> & { issue?: ValidationIssue }) {
+  const remote = sel.gitRemote;
+  const account = tools?.github ?? null;
+  const set = (patch: Partial<Selection['gitRemote']>) => update((s) => ({ ...s, gitRemote: { ...s.gitRemote, ...patch } }));
+  // Boş adres henüz hata değil, yapılacak iş: kırmızı yerine nötr ipucu
+  const urlError = remote.url.trim() ? issue?.message : undefined;
+
+  const choices: { mode: Selection['gitRemote']['mode']; title: string; detail: string; disabled?: boolean }[] = [
+    { mode: 'local', title: 'Sadece bu bilgisayarda', detail: 'Uzak depo yok; istediğin zaman kendin bağlarsın' },
+    {
+      mode: 'github',
+      title: "GitHub'da yeni depo aç",
+      detail: account
+        ? `${account} hesabında, ${sel.name || 'proje'} adıyla; bu bilgisayardaki GitHub girişiyle`
+        : 'Bu bilgisayarda kayıtlı GitHub girişi yok. Terminalde bir kez git push yapınca açılır.',
+      disabled: Boolean(tools && !account),
+    },
+    { mode: 'url', title: 'Açtığım depoya gönder', detail: "GitHub'da boş bir depo aç, adresini buraya yapıştır" },
+  ];
+
+  return (
+    <li className="bg-surface-2/40 px-3.5 py-3">
+      <div role="radiogroup" aria-label="Uzak depo" className="space-y-1">
+        {choices.map((c) => {
+          const on = remote.mode === c.mode;
+          return (
+            <div key={c.mode}>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={on}
+                disabled={c.disabled}
+                onClick={() => set({ mode: c.mode })}
+                className="flex w-full items-start gap-3 rounded-lg px-2 py-1.5 text-left hover:bg-surface-2 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+              >
+                <span className="mt-0.5"><Checkbox radio checked={on} disabled={c.disabled} /></span>
+                <span className="min-w-0 flex-1">
+                  <span className={cx('block text-[13px] font-medium', c.disabled ? 'text-fg-3' : 'text-fg')}>{c.title}</span>
+                  <span className={cx('block text-[12px]', c.disabled ? 'text-warn' : 'text-fg-2')}>{c.detail}</span>
+                </span>
+              </button>
+
+              {on && c.mode === 'github' && (
+                <div className="mt-1 mb-1 ml-9 flex items-center gap-3">
+                  <Segmented
+                    size="sm"
+                    label="Depo görünürlüğü"
+                    value={remote.private ? 'private' : 'public'}
+                    options={[{ value: 'private', label: 'Gizli' }, { value: 'public', label: 'Herkese açık' }]}
+                    onChange={(v) => set({ private: v === 'private' })}
+                  />
+                  <span className="text-[12px] text-fg-3">{remote.private ? 'Sadece sen görürsün' : 'Portfolyoda gösterilebilir'}</span>
+                </div>
+              )}
+
+              {on && c.mode === 'url' && (
+                <div className="mt-1 mb-1 ml-9">
+                  <input
+                    aria-label="Depo adresi"
+                    spellCheck={false}
+                    autoFocus
+                    placeholder="https://github.com/kullanici/depo.git"
+                    value={remote.url}
+                    // github.com/... diye yapıştırılan adrese https:// eklenir
+                    onChange={(e) => set({ url: e.target.value.trim().replace(/^(github\.com|gitlab\.com)\//, 'https://$1/') })}
+                    className={cx(inputClass, 'font-mono text-[12.5px]', urlError && 'border-danger focus:border-danger focus:ring-danger-soft')}
+                    aria-invalid={!!urlError}
+                  />
+                  <p className={cx('mt-1.5 text-[12px]', urlError ? 'text-danger' : 'text-fg-3')}>
+                    {urlError ?? 'Depoyu README ya da lisans eklemeden aç; doluysa gönderim reddedilir.'}
+                  </p>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </li>
   );
 }
 

@@ -5,8 +5,10 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { assignPorts, serviceLinks } from '../core/generate/compose.js';
 import { dockerConflict, type GenerateOptions, generateProject, startProject, hasGitIdentity, isDockerRunning, isTargetFree } from '../core/generate/index.js';
+import { findPython } from '../core/generate/python.js';
+import { githubAccount } from '../core/generate/git.js';
 import { loadCatalog } from '../core/initializr.js';
-import { resolve } from '../core/selection.js';
+import { isPython, resolve } from '../core/selection.js';
 import type { GenerateResult, Selection } from '../core/types.js';
 import { CancelledError, commandSucceeds } from '../core/util.js';
 import { type AppApi, type GenerateOutcome, IPC, type Settings } from '../shared/bridge.js';
@@ -14,9 +16,10 @@ import { type AppApi, type GenerateOutcome, IPC, type Settings } from '../shared
 const here = dirname(fileURLToPath(import.meta.url));
 const settingsFile = () => join(app.getPath('userData'), 'settings.json');
 
+// Windows'un çizdiği pencere düğmeleri arayüzün zemin rengiyle aynı olmalı (styles.css → --bg)
 const TITLE_BAR = {
-  dark: { color: '#0f1014', symbolColor: '#c9cbd6' },
-  light: { color: '#f6f6f9', symbolColor: '#3a3d4a' },
+  dark: { color: '#1b2026', symbolColor: '#c9ced8' },
+  light: { color: '#e7e9ed', symbolColor: '#3a3d4a' },
 };
 
 let window: BrowserWindow | null = null;
@@ -139,19 +142,21 @@ const handlers: Handlers = {
 
   checkTarget: async (selection) => ({
     folderTaken: !isTargetFree(selection),
-    dockerConflict: await dockerConflict(selection.name),
+    dockerConflict: isPython(selection) ? null : await dockerConflict(selection.name),
   }),
 
   previewPorts: async (selection) => assignPorts(resolve(selection)),
 
   toolStatus: async () => {
-    const [docker, node, git, gitIdentity] = await Promise.all([
+    const [docker, node, git, gitIdentity, python, github] = await Promise.all([
       isDockerRunning(),
       commandSucceeds('npm --version', app.getPath('home')),
       commandSucceeds('git --version', app.getPath('home')),
       hasGitIdentity(),
+      findPython(),
+      githubAccount(),
     ]);
-    return { docker, node, git, gitIdentity };
+    return { docker, node, git, gitIdentity, python: python?.version ?? null, github };
   },
 
   generate: (selection: Selection) => runJob(selection, generateProject),

@@ -19,6 +19,10 @@ export interface ToolStatus {
   git: boolean;
   /** git config --global user.name / user.email tanımlı mı */
   gitIdentity: boolean;
+  /** Bulunan Python sürümü (3.10+), yoksa null */
+  python: string | null;
+  /** Bilgisayarda kayıtlı GitHub girişinin kullanıcı adı (git credential), yoksa null */
+  github: string | null;
 }
 
 export interface TargetCheck {

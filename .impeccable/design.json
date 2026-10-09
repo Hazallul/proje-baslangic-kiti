@@ -1,0 +1,1021 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-09T12:04:30.240Z",
+  "title": "Design System: create-hazal-app",
+  "extensions": {
+    "colorMeta": {
+      "bg": {
+        "role": "neutral",
+        "displayName": "Açık Döküm Gri",
+        "canonical": "#e7e9ed",
+        "tonalRamp": [
+          "oklch(15% 0.003 264.5)",
+          "oklch(26% 0.005 264.5)",
+          "oklch(38% 0.006 264.5)",
+          "oklch(50% 0.006 264.5)",
+          "oklch(62% 0.006 264.5)",
+          "oklch(74% 0.005 264.5)",
+          "oklch(85% 0.003 264.5)",
+          "oklch(95% 0.001 264.5)"
+        ]
+      },
+      "panel": {
+        "role": "neutral",
+        "displayName": "Çerçeve Grisi",
+        "canonical": "#dde0e5",
+        "tonalRamp": [
+          "oklch(15% 0.004 260.7)",
+          "oklch(26% 0.007 260.7)",
+          "oklch(38% 0.008 260.7)",
+          "oklch(50% 0.008 260.7)",
+          "oklch(62% 0.008 260.7)",
+          "oklch(74% 0.007 260.7)",
+          "oklch(85% 0.004 260.7)",
+          "oklch(95% 0.002 260.7)"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Parça Yüzeyi",
+        "canonical": "#f6f7f9",
+        "tonalRamp": [
+          "oklch(15% 0.001 264.5)",
+          "oklch(26% 0.002 264.5)",
+          "oklch(38% 0.003 264.5)",
+          "oklch(50% 0.003 264.5)",
+          "oklch(62% 0.003 264.5)",
+          "oklch(74% 0.002 264.5)",
+          "oklch(85% 0.001 264.5)",
+          "oklch(95% 0.001 264.5)"
+        ]
+      },
+      "surface-2": {
+        "role": "neutral",
+        "displayName": "Parça Yüzeyi (üzerine gelme)",
+        "canonical": "#eceef2",
+        "tonalRamp": [
+          "oklch(15% 0.003 264.5)",
+          "oklch(26% 0.005 264.5)",
+          "oklch(38% 0.006 264.5)",
+          "oklch(50% 0.006 264.5)",
+          "oklch(62% 0.006 264.5)",
+          "oklch(74% 0.005 264.5)",
+          "oklch(85% 0.003 264.5)",
+          "oklch(95% 0.001 264.5)"
+        ]
+      },
+      "border": {
+        "role": "neutral",
+        "displayName": "Çerçeve Çizgisi",
+        "canonical": "#d0d4db",
+        "tonalRamp": [
+          "oklch(15% 0.005 261.8)",
+          "oklch(26% 0.009 261.8)",
+          "oklch(38% 0.011 261.8)",
+          "oklch(50% 0.011 261.8)",
+          "oklch(62% 0.011 261.8)",
+          "oklch(74% 0.009 261.8)",
+          "oklch(85% 0.005 261.8)",
+          "oklch(95% 0.003 261.8)"
+        ]
+      },
+      "border-strong": {
+        "role": "neutral",
+        "displayName": "Güçlü Çerçeve Çizgisi",
+        "canonical": "#b3b9c4",
+        "tonalRamp": [
+          "oklch(15% 0.008 262.7)",
+          "oklch(26% 0.015 262.7)",
+          "oklch(38% 0.017 262.7)",
+          "oklch(50% 0.017 262.7)",
+          "oklch(62% 0.017 262.7)",
+          "oklch(74% 0.015 262.7)",
+          "oklch(85% 0.008 262.7)",
+          "oklch(95% 0.004 262.7)"
+        ]
+      },
+      "text": {
+        "role": "neutral",
+        "displayName": "Mürekkep",
+        "canonical": "#14161b",
+        "tonalRamp": [
+          "oklch(15% 0.005 268.2)",
+          "oklch(26% 0.009 268.2)",
+          "oklch(38% 0.010 268.2)",
+          "oklch(50% 0.010 268.2)",
+          "oklch(62% 0.010 268.2)",
+          "oklch(74% 0.009 268.2)",
+          "oklch(85% 0.005 268.2)",
+          "oklch(95% 0.003 268.2)"
+        ]
+      },
+      "text-2": {
+        "role": "neutral",
+        "displayName": "İkincil Mürekkep",
+        "canonical": "#444955",
+        "tonalRamp": [
+          "oklch(15% 0.011 267.5)",
+          "oklch(26% 0.018 267.5)",
+          "oklch(38% 0.021 267.5)",
+          "oklch(50% 0.021 267.5)",
+          "oklch(62% 0.021 267.5)",
+          "oklch(74% 0.018 267.5)",
+          "oklch(85% 0.011 267.5)",
+          "oklch(95% 0.005 267.5)"
+        ]
+      },
+      "text-3": {
+        "role": "neutral",
+        "displayName": "Soluk Mürekkep",
+        "canonical": "#5d6370",
+        "tonalRamp": [
+          "oklch(15% 0.011 265.8)",
+          "oklch(26% 0.019 265.8)",
+          "oklch(38% 0.022 265.8)",
+          "oklch(50% 0.022 265.8)",
+          "oklch(62% 0.022 265.8)",
+          "oklch(74% 0.019 265.8)",
+          "oklch(85% 0.011 265.8)",
+          "oklch(95% 0.006 265.8)"
+        ]
+      },
+      "action": {
+        "role": "primary",
+        "displayName": "Kit Kutusu Kırmızısı",
+        "canonical": "#c8102e",
+        "tonalRamp": [
+          "oklch(15% 0.104 22.3)",
+          "oklch(26% 0.180 22.3)",
+          "oklch(38% 0.207 22.3)",
+          "oklch(50% 0.207 22.3)",
+          "oklch(62% 0.207 22.3)",
+          "oklch(74% 0.180 22.3)",
+          "oklch(85% 0.104 22.3)",
+          "oklch(95% 0.052 22.3)"
+        ]
+      },
+      "action-hover": {
+        "role": "primary",
+        "displayName": "Kit Kutusu Kırmızısı (hover)",
+        "canonical": "#a80c26",
+        "tonalRamp": [
+          "oklch(15% 0.091 22.0)",
+          "oklch(26% 0.158 22.0)",
+          "oklch(38% 0.182 22.0)",
+          "oklch(50% 0.182 22.0)",
+          "oklch(62% 0.182 22.0)",
+          "oklch(74% 0.158 22.0)",
+          "oklch(85% 0.091 22.0)",
+          "oklch(95% 0.045 22.0)"
+        ]
+      },
+      "action-ink": {
+        "role": "primary",
+        "displayName": "Kırmızı Üstü Beyaz",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "oklch(15% 0.000 89.9)",
+          "oklch(26% 0.000 89.9)",
+          "oklch(38% 0.000 89.9)",
+          "oklch(50% 0.000 89.9)",
+          "oklch(62% 0.000 89.9)",
+          "oklch(74% 0.000 89.9)",
+          "oklch(85% 0.000 89.9)",
+          "oklch(95% 0.000 89.9)"
+        ]
+      },
+      "accent": {
+        "role": "primary",
+        "displayName": "Varsayılan Seçim (kırmızı)",
+        "canonical": "#c8102e",
+        "tonalRamp": [
+          "oklch(15% 0.104 22.3)",
+          "oklch(26% 0.180 22.3)",
+          "oklch(38% 0.207 22.3)",
+          "oklch(50% 0.207 22.3)",
+          "oklch(62% 0.207 22.3)",
+          "oklch(74% 0.180 22.3)",
+          "oklch(85% 0.104 22.3)",
+          "oklch(95% 0.052 22.3)"
+        ]
+      },
+      "ok": {
+        "role": "tertiary",
+        "displayName": "Tamam Yeşili",
+        "canonical": "#17804f",
+        "tonalRamp": [
+          "oklch(15% 0.060 156.8)",
+          "oklch(26% 0.103 156.8)",
+          "oklch(38% 0.119 156.8)",
+          "oklch(50% 0.119 156.8)",
+          "oklch(62% 0.119 156.8)",
+          "oklch(74% 0.103 156.8)",
+          "oklch(85% 0.060 156.8)",
+          "oklch(95% 0.030 156.8)"
+        ]
+      },
+      "warn": {
+        "role": "tertiary",
+        "displayName": "Uyarı Kehribarı",
+        "canonical": "#9a5f00",
+        "tonalRamp": [
+          "oklch(15% 0.059 68.4)",
+          "oklch(26% 0.102 68.4)",
+          "oklch(38% 0.118 68.4)",
+          "oklch(50% 0.118 68.4)",
+          "oklch(62% 0.118 68.4)",
+          "oklch(74% 0.102 68.4)",
+          "oklch(85% 0.059 68.4)",
+          "oklch(95% 0.029 68.4)"
+        ]
+      },
+      "danger": {
+        "role": "tertiary",
+        "displayName": "Hata Kırmızısı",
+        "canonical": "#c4262e",
+        "tonalRamp": [
+          "oklch(15% 0.096 24.6)",
+          "oklch(26% 0.167 24.6)",
+          "oklch(38% 0.193 24.6)",
+          "oklch(50% 0.193 24.6)",
+          "oklch(62% 0.193 24.6)",
+          "oklch(74% 0.167 24.6)",
+          "oklch(85% 0.096 24.6)",
+          "oklch(95% 0.048 24.6)"
+        ]
+      },
+      "kit-fullstack": {
+        "role": "secondary",
+        "displayName": "Fullstack Lacivert",
+        "canonical": "#2f4fb5",
+        "tonalRamp": [
+          "oklch(15% 0.083 266.6)",
+          "oklch(26% 0.144 266.6)",
+          "oklch(38% 0.166 266.6)",
+          "oklch(50% 0.166 266.6)",
+          "oklch(62% 0.166 266.6)",
+          "oklch(74% 0.144 266.6)",
+          "oklch(85% 0.083 266.6)",
+          "oklch(95% 0.042 266.6)"
+        ]
+      },
+      "kit-backend": {
+        "role": "secondary",
+        "displayName": "REST API Yeşili",
+        "canonical": "#1f8a4c",
+        "tonalRamp": [
+          "oklch(15% 0.067 152.5)",
+          "oklch(26% 0.116 152.5)",
+          "oklch(38% 0.134 152.5)",
+          "oklch(50% 0.134 152.5)",
+          "oklch(62% 0.134 152.5)",
+          "oklch(74% 0.116 152.5)",
+          "oklch(85% 0.067 152.5)",
+          "oklch(95% 0.033 152.5)"
+        ]
+      },
+      "kit-frontend": {
+        "role": "secondary",
+        "displayName": "Web Sitesi Turuncusu",
+        "canonical": "#d4621a",
+        "tonalRamp": [
+          "oklch(15% 0.081 47.0)",
+          "oklch(26% 0.141 47.0)",
+          "oklch(38% 0.163 47.0)",
+          "oklch(50% 0.163 47.0)",
+          "oklch(62% 0.163 47.0)",
+          "oklch(74% 0.141 47.0)",
+          "oklch(85% 0.081 47.0)",
+          "oklch(95% 0.041 47.0)"
+        ]
+      },
+      "kit-python": {
+        "role": "secondary",
+        "displayName": "Python Sarısı",
+        "canonical": "#f2c230",
+        "tonalRamp": [
+          "oklch(15% 0.079 89.0)",
+          "oklch(26% 0.137 89.0)",
+          "oklch(38% 0.158 89.0)",
+          "oklch(50% 0.158 89.0)",
+          "oklch(62% 0.158 89.0)",
+          "oklch(74% 0.137 89.0)",
+          "oklch(85% 0.079 89.0)",
+          "oklch(95% 0.040 89.0)"
+        ]
+      },
+      "kit-python-ink": {
+        "role": "secondary",
+        "displayName": "Python Kutusu Mürekkebi",
+        "canonical": "#2b2100",
+        "tonalRamp": [
+          "oklch(15% 0.026 92.1)",
+          "oklch(26% 0.045 92.1)",
+          "oklch(38% 0.052 92.1)",
+          "oklch(50% 0.052 92.1)",
+          "oklch(62% 0.052 92.1)",
+          "oklch(74% 0.045 92.1)",
+          "oklch(85% 0.026 92.1)",
+          "oklch(95% 0.013 92.1)"
+        ]
+      },
+      "accent-fullstack": {
+        "role": "secondary",
+        "displayName": "Fullstack Seçim",
+        "canonical": "#2f4fb5",
+        "tonalRamp": [
+          "oklch(15% 0.083 266.6)",
+          "oklch(26% 0.144 266.6)",
+          "oklch(38% 0.166 266.6)",
+          "oklch(50% 0.166 266.6)",
+          "oklch(62% 0.166 266.6)",
+          "oklch(74% 0.144 266.6)",
+          "oklch(85% 0.083 266.6)",
+          "oklch(95% 0.042 266.6)"
+        ]
+      },
+      "accent-backend": {
+        "role": "secondary",
+        "displayName": "REST API Seçim",
+        "canonical": "#1b7a43",
+        "tonalRamp": [
+          "oklch(15% 0.061 152.7)",
+          "oklch(26% 0.105 152.7)",
+          "oklch(38% 0.121 152.7)",
+          "oklch(50% 0.121 152.7)",
+          "oklch(62% 0.121 152.7)",
+          "oklch(74% 0.105 152.7)",
+          "oklch(85% 0.061 152.7)",
+          "oklch(95% 0.030 152.7)"
+        ]
+      },
+      "accent-frontend": {
+        "role": "secondary",
+        "displayName": "Web Sitesi Seçim",
+        "canonical": "#b04c0c",
+        "tonalRamp": [
+          "oklch(15% 0.073 45.9)",
+          "oklch(26% 0.127 45.9)",
+          "oklch(38% 0.146 45.9)",
+          "oklch(50% 0.146 45.9)",
+          "oklch(62% 0.146 45.9)",
+          "oklch(74% 0.127 45.9)",
+          "oklch(85% 0.073 45.9)",
+          "oklch(95% 0.037 45.9)"
+        ]
+      },
+      "accent-python": {
+        "role": "secondary",
+        "displayName": "Python Seçim",
+        "canonical": "#8a6100",
+        "tonalRamp": [
+          "oklch(15% 0.054 79.7)",
+          "oklch(26% 0.094 79.7)",
+          "oklch(38% 0.108 79.7)",
+          "oklch(50% 0.108 79.7)",
+          "oklch(62% 0.108 79.7)",
+          "oklch(74% 0.094 79.7)",
+          "oklch(85% 0.054 79.7)",
+          "oklch(95% 0.027 79.7)"
+        ]
+      },
+      "dark-bg": {
+        "role": "neutral",
+        "displayName": "Koyu Gunmetal",
+        "canonical": "#1b2026",
+        "tonalRamp": [
+          "oklch(15% 0.007 253.1)",
+          "oklch(26% 0.012 253.1)",
+          "oklch(38% 0.014 253.1)",
+          "oklch(50% 0.014 253.1)",
+          "oklch(62% 0.014 253.1)",
+          "oklch(74% 0.012 253.1)",
+          "oklch(85% 0.007 253.1)",
+          "oklch(95% 0.003 253.1)"
+        ]
+      },
+      "dark-panel": {
+        "role": "neutral",
+        "displayName": "Koyu Çerçeve Grisi",
+        "canonical": "#20262d",
+        "tonalRamp": [
+          "oklch(15% 0.008 252.4)",
+          "oklch(26% 0.014 252.4)",
+          "oklch(38% 0.016 252.4)",
+          "oklch(50% 0.016 252.4)",
+          "oklch(62% 0.016 252.4)",
+          "oklch(74% 0.014 252.4)",
+          "oklch(85% 0.008 252.4)",
+          "oklch(95% 0.004 252.4)"
+        ]
+      },
+      "dark-surface": {
+        "role": "neutral",
+        "displayName": "Parça Yüzeyi (koyu tema)",
+        "canonical": "#262d35",
+        "tonalRamp": [
+          "oklch(15% 0.009 251.9)",
+          "oklch(26% 0.015 251.9)",
+          "oklch(38% 0.018 251.9)",
+          "oklch(50% 0.018 251.9)",
+          "oklch(62% 0.018 251.9)",
+          "oklch(74% 0.015 251.9)",
+          "oklch(85% 0.009 251.9)",
+          "oklch(95% 0.004 251.9)"
+        ]
+      },
+      "dark-surface-2": {
+        "role": "neutral",
+        "displayName": "Parça Yüzeyi (üzerine gelme) (koyu tema)",
+        "canonical": "#2d343d",
+        "tonalRamp": [
+          "oklch(15% 0.009 254.8)",
+          "oklch(26% 0.016 254.8)",
+          "oklch(38% 0.019 254.8)",
+          "oklch(50% 0.019 254.8)",
+          "oklch(62% 0.019 254.8)",
+          "oklch(74% 0.016 254.8)",
+          "oklch(85% 0.009 254.8)",
+          "oklch(95% 0.005 254.8)"
+        ]
+      },
+      "dark-border": {
+        "role": "neutral",
+        "displayName": "Çerçeve Çizgisi (koyu tema)",
+        "canonical": "#343c46",
+        "tonalRamp": [
+          "oklch(15% 0.010 254.1)",
+          "oklch(26% 0.018 254.1)",
+          "oklch(38% 0.021 254.1)",
+          "oklch(50% 0.021 254.1)",
+          "oklch(62% 0.021 254.1)",
+          "oklch(74% 0.018 254.1)",
+          "oklch(85% 0.010 254.1)",
+          "oklch(95% 0.005 254.1)"
+        ]
+      },
+      "dark-border-strong": {
+        "role": "neutral",
+        "displayName": "Güçlü Çerçeve Çizgisi (koyu tema)",
+        "canonical": "#46505c",
+        "tonalRamp": [
+          "oklch(15% 0.012 253.1)",
+          "oklch(26% 0.021 253.1)",
+          "oklch(38% 0.024 253.1)",
+          "oklch(50% 0.024 253.1)",
+          "oklch(62% 0.024 253.1)",
+          "oklch(74% 0.021 253.1)",
+          "oklch(85% 0.012 253.1)",
+          "oklch(95% 0.006 253.1)"
+        ]
+      },
+      "dark-text": {
+        "role": "neutral",
+        "displayName": "Mürekkep (koyu tema)",
+        "canonical": "#eef0f3",
+        "tonalRamp": [
+          "oklch(15% 0.002 258.3)",
+          "oklch(26% 0.004 258.3)",
+          "oklch(38% 0.005 258.3)",
+          "oklch(50% 0.005 258.3)",
+          "oklch(62% 0.005 258.3)",
+          "oklch(74% 0.004 258.3)",
+          "oklch(85% 0.002 258.3)",
+          "oklch(95% 0.001 258.3)"
+        ]
+      },
+      "dark-text-2": {
+        "role": "neutral",
+        "displayName": "İkincil Mürekkep (koyu tema)",
+        "canonical": "#b0b6c2",
+        "tonalRamp": [
+          "oklch(15% 0.009 264.5)",
+          "oklch(26% 0.016 264.5)",
+          "oklch(38% 0.018 264.5)",
+          "oklch(50% 0.018 264.5)",
+          "oklch(62% 0.018 264.5)",
+          "oklch(74% 0.016 264.5)",
+          "oklch(85% 0.009 264.5)",
+          "oklch(95% 0.005 264.5)"
+        ]
+      },
+      "dark-text-3": {
+        "role": "neutral",
+        "displayName": "Soluk Mürekkep (koyu tema)",
+        "canonical": "#9aa1b0",
+        "tonalRamp": [
+          "oklch(15% 0.012 265.7)",
+          "oklch(26% 0.020 265.7)",
+          "oklch(38% 0.023 265.7)",
+          "oklch(50% 0.023 265.7)",
+          "oklch(62% 0.023 265.7)",
+          "oklch(74% 0.020 265.7)",
+          "oklch(85% 0.012 265.7)",
+          "oklch(95% 0.006 265.7)"
+        ]
+      },
+      "dark-action": {
+        "role": "primary",
+        "displayName": "Kit Kutusu Kırmızısı (koyu tema)",
+        "canonical": "#d9233b",
+        "tonalRamp": [
+          "oklch(15% 0.106 21.5)",
+          "oklch(26% 0.184 21.5)",
+          "oklch(38% 0.212 21.5)",
+          "oklch(50% 0.212 21.5)",
+          "oklch(62% 0.212 21.5)",
+          "oklch(74% 0.184 21.5)",
+          "oklch(85% 0.106 21.5)",
+          "oklch(95% 0.053 21.5)"
+        ]
+      },
+      "dark-action-hover": {
+        "role": "primary",
+        "displayName": "Kit Kutusu Kırmızısı (hover) (koyu tema)",
+        "canonical": "#ec3a51",
+        "tonalRamp": [
+          "oklch(15% 0.106 19.3)",
+          "oklch(26% 0.184 19.3)",
+          "oklch(38% 0.212 19.3)",
+          "oklch(50% 0.212 19.3)",
+          "oklch(62% 0.212 19.3)",
+          "oklch(74% 0.184 19.3)",
+          "oklch(85% 0.106 19.3)",
+          "oklch(95% 0.053 19.3)"
+        ]
+      },
+      "dark-accent": {
+        "role": "primary",
+        "displayName": "Varsayılan Seçim (kırmızı) (koyu tema)",
+        "canonical": "#ff6b7c",
+        "tonalRamp": [
+          "oklch(15% 0.090 15.9)",
+          "oklch(26% 0.156 15.9)",
+          "oklch(38% 0.180 15.9)",
+          "oklch(50% 0.180 15.9)",
+          "oklch(62% 0.180 15.9)",
+          "oklch(74% 0.156 15.9)",
+          "oklch(85% 0.090 15.9)",
+          "oklch(95% 0.045 15.9)"
+        ]
+      },
+      "dark-accent-ink": {
+        "role": "neutral",
+        "displayName": "accent-ink (koyu tema)",
+        "canonical": "#1b0206",
+        "tonalRamp": [
+          "oklch(15% 0.025 11.5)",
+          "oklch(26% 0.043 11.5)",
+          "oklch(38% 0.050 11.5)",
+          "oklch(50% 0.050 11.5)",
+          "oklch(62% 0.050 11.5)",
+          "oklch(74% 0.043 11.5)",
+          "oklch(85% 0.025 11.5)",
+          "oklch(95% 0.012 11.5)"
+        ]
+      },
+      "dark-ok": {
+        "role": "tertiary",
+        "displayName": "Tamam Yeşili (koyu tema)",
+        "canonical": "#45c587",
+        "tonalRamp": [
+          "oklch(15% 0.072 158.4)",
+          "oklch(26% 0.125 158.4)",
+          "oklch(38% 0.145 158.4)",
+          "oklch(50% 0.145 158.4)",
+          "oklch(62% 0.145 158.4)",
+          "oklch(74% 0.125 158.4)",
+          "oklch(85% 0.072 158.4)",
+          "oklch(95% 0.036 158.4)"
+        ]
+      },
+      "dark-warn": {
+        "role": "tertiary",
+        "displayName": "Uyarı Kehribarı (koyu tema)",
+        "canonical": "#e9b450",
+        "tonalRamp": [
+          "oklch(15% 0.066 80.7)",
+          "oklch(26% 0.114 80.7)",
+          "oklch(38% 0.131 80.7)",
+          "oklch(50% 0.131 80.7)",
+          "oklch(62% 0.131 80.7)",
+          "oklch(74% 0.114 80.7)",
+          "oklch(85% 0.066 80.7)",
+          "oklch(95% 0.033 80.7)"
+        ]
+      },
+      "dark-danger": {
+        "role": "tertiary",
+        "displayName": "Hata Kırmızısı (koyu tema)",
+        "canonical": "#f2716b",
+        "tonalRamp": [
+          "oklch(15% 0.080 24.7)",
+          "oklch(26% 0.139 24.7)",
+          "oklch(38% 0.160 24.7)",
+          "oklch(50% 0.160 24.7)",
+          "oklch(62% 0.160 24.7)",
+          "oklch(74% 0.139 24.7)",
+          "oklch(85% 0.080 24.7)",
+          "oklch(95% 0.040 24.7)"
+        ]
+      },
+      "dark-kit-fullstack": {
+        "role": "secondary",
+        "displayName": "Fullstack Lacivert (koyu tema)",
+        "canonical": "#3d5fd0",
+        "tonalRamp": [
+          "oklch(15% 0.089 267.3)",
+          "oklch(26% 0.155 267.3)",
+          "oklch(38% 0.179 267.3)",
+          "oklch(50% 0.179 267.3)",
+          "oklch(62% 0.179 267.3)",
+          "oklch(74% 0.155 267.3)",
+          "oklch(85% 0.089 267.3)",
+          "oklch(95% 0.045 267.3)"
+        ]
+      },
+      "dark-kit-python-ink": {
+        "role": "secondary",
+        "displayName": "Python Kutusu Mürekkebi (koyu tema)",
+        "canonical": "#241a00",
+        "tonalRamp": [
+          "oklch(15% 0.023 89.1)",
+          "oklch(26% 0.040 89.1)",
+          "oklch(38% 0.046 89.1)",
+          "oklch(50% 0.046 89.1)",
+          "oklch(62% 0.046 89.1)",
+          "oklch(74% 0.040 89.1)",
+          "oklch(85% 0.023 89.1)",
+          "oklch(95% 0.011 89.1)"
+        ]
+      },
+      "dark-accent-fullstack": {
+        "role": "secondary",
+        "displayName": "Fullstack Seçim (koyu tema)",
+        "canonical": "#86a0ff",
+        "tonalRamp": [
+          "oklch(15% 0.071 271.0)",
+          "oklch(26% 0.122 271.0)",
+          "oklch(38% 0.141 271.0)",
+          "oklch(50% 0.141 271.0)",
+          "oklch(62% 0.141 271.0)",
+          "oklch(74% 0.122 271.0)",
+          "oklch(85% 0.071 271.0)",
+          "oklch(95% 0.035 271.0)"
+        ]
+      },
+      "dark-accent-backend": {
+        "role": "secondary",
+        "displayName": "REST API Seçim (koyu tema)",
+        "canonical": "#52cf8a",
+        "tonalRamp": [
+          "oklch(15% 0.075 155.9)",
+          "oklch(26% 0.130 155.9)",
+          "oklch(38% 0.150 155.9)",
+          "oklch(50% 0.150 155.9)",
+          "oklch(62% 0.150 155.9)",
+          "oklch(74% 0.130 155.9)",
+          "oklch(85% 0.075 155.9)",
+          "oklch(95% 0.037 155.9)"
+        ]
+      },
+      "dark-accent-frontend": {
+        "role": "secondary",
+        "displayName": "Web Sitesi Seçim (koyu tema)",
+        "canonical": "#ff9d55",
+        "tonalRamp": [
+          "oklch(15% 0.073 54.9)",
+          "oklch(26% 0.126 54.9)",
+          "oklch(38% 0.146 54.9)",
+          "oklch(50% 0.146 54.9)",
+          "oklch(62% 0.146 54.9)",
+          "oklch(74% 0.126 54.9)",
+          "oklch(85% 0.073 54.9)",
+          "oklch(95% 0.036 54.9)"
+        ]
+      },
+      "dark-accent-python": {
+        "role": "secondary",
+        "displayName": "Python Seçim (koyu tema)",
+        "canonical": "#f2c230",
+        "tonalRamp": [
+          "oklch(15% 0.079 89.0)",
+          "oklch(26% 0.137 89.0)",
+          "oklch(38% 0.158 89.0)",
+          "oklch(50% 0.158 89.0)",
+          "oklch(62% 0.158 89.0)",
+          "oklch(74% 0.137 89.0)",
+          "oklch(85% 0.079 89.0)",
+          "oklch(95% 0.040 89.0)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Sadece açılıştaki tek soru (\"Ne kuruyorsun?\")."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Ekran başlıkları: kit adı, \"… kuruluyor\", \"… hazır\"."
+      },
+      "title-kit": {
+        "displayName": "Kit Başlığı",
+        "purpose": "Açılış kartı şeridindeki kit adı."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Bölüm başlıkları ve Python şablon kartı adı."
+      },
+      "part-number": {
+        "displayName": "Parça Numarası",
+        "purpose": "A1/B2 parça numaraları, grup harfleri, adım numaraları, sayaçlar; tabular."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Gövde varsayılanı ve montaj adım adları."
+      },
+      "body-control": {
+        "displayName": "Kontrol",
+        "purpose": "Düğmeler, alanlar, öne çıkan satır başlıkları."
+      },
+      "body-sm": {
+        "displayName": "Satır",
+        "purpose": "Liste satırları, seçenek adları, kart içi parça satırları."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Alan etiketleri, bölüm meta yazısı, segment ve çip yazısı."
+      },
+      "caption": {
+        "displayName": "Caption",
+        "purpose": "İpuçları, açıklamalar, durum notları."
+      },
+      "mono": {
+        "displayName": "Mono",
+        "purpose": "Yol, port, komut, .env anahtarı, dosya planı ve log."
+      }
+    },
+    "derivedColors": [
+      {
+        "name": "accent-hover",
+        "value": "color-mix(in srgb, var(--accent) 86%, var(--text))",
+        "purpose": "Seçim renginin üzerine gelme tonu."
+      },
+      {
+        "name": "accent-soft",
+        "value": "color-mix(in srgb, var(--accent) 11%, transparent)",
+        "purpose": "Seçili kart/çip/satır zemini, metin seçimi, alan odak halkası."
+      },
+      {
+        "name": "accent-line",
+        "value": "color-mix(in srgb, var(--accent) 62%, transparent)",
+        "purpose": "Seçili çerçeve ve odak halkası."
+      },
+      {
+        "name": "ok-soft / warn-soft / danger-soft",
+        "value": "aynı rengin %9–13 opaklığı",
+        "purpose": "Durum kutularının ve etiketlerin yumuşak zemini."
+      },
+      {
+        "name": "dark-accent-ink (kit başına)",
+        "value": "fullstack #0b1233 · backend #04200f · frontend #2a1100 · python #241a00",
+        "purpose": "Koyu temada kit seçim rengi üstündeki mürekkep."
+      },
+      {
+        "name": "theming",
+        "value": "<html data-theme=\"light|dark\" data-kit=\"fullstack|backend|frontend|python\">",
+        "purpose": "Tema ve açık kit kök özniteliklerle değişir; açılışta data-kit yoktur ve accent kırmızıdır."
+      }
+    ],
+    "shadows": [
+      {
+        "name": "card-shadow (parça)",
+        "value": "0 1px 0 rgb(255 255 255 / 0.7) inset, 0 6px 16px -12px rgb(20 24 34 / 0.4)",
+        "purpose": "Açılış kartları ve takılmış parça yuvaları. Koyu tema: 0 1px 0 rgb(255 255 255 / 0.04) inset, 0 8px 20px -14px rgb(0 0 0 / 0.8)."
+      },
+      {
+        "name": "shadow (havada)",
+        "value": "0 10px 28px -16px rgb(20 24 34 / 0.35)",
+        "purpose": "Açıklama kartı ve üzerine gelinen açılış kartı. Koyu tema: 0 12px 30px -14px rgb(0 0 0 / 0.7)."
+      },
+      {
+        "name": "primary-gloss",
+        "value": "0 1px 0 rgb(255 255 255 / 0.18) inset",
+        "purpose": "Sadece birincil kırmızı düğmenin üst kenarı."
+      },
+      {
+        "name": "focus-ring",
+        "value": "outline: 2px solid var(--accent-line); outline-offset: 2px",
+        "purpose": "Bütün klavye odakları; alanlarda ek olarak 3px accent-soft halka."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out-expo",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Giriş ve yerine oturma hareketlerinin ortak eğrisi."
+      },
+      {
+        "name": "enter",
+        "value": "220ms; opacity 0 + translateY(4px) → yerinde",
+        "purpose": "Açılan bölümler, açıklama kartı, hata kutusu, bitiş ekranı."
+      },
+      {
+        "name": "snap",
+        "value": "240ms; 0% opacity .6 scale .97 → 60% opacity 1 scale 1.03 → 100%",
+        "purpose": "Çerçeveye takılan parça, biten adım rozeti, bitiş onayı."
+      },
+      {
+        "name": "state-color",
+        "value": "150ms",
+        "purpose": "Renk ve çerçeve geçişleri."
+      },
+      {
+        "name": "state-transform",
+        "value": "200ms ease-out",
+        "purpose": "Kit kartı 2px kalkışı, ok kayması, açılır ok dönüşü, anahtar topuzu."
+      },
+      {
+        "name": "popover-delay",
+        "value": "300ms",
+        "purpose": "Açıklama kartının açılma gecikmesi."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "animation/transition 1ms",
+        "purpose": "prefers-reduced-motion: reduce açıkken her şey."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "welcome-4col",
+        "value": "900px"
+      },
+      {
+        "name": "window-min",
+        "value": "980px"
+      },
+      {
+        "name": "config-preview-panel",
+        "value": "980px"
+      },
+      {
+        "name": "wide",
+        "value": "1180px"
+      }
+    ],
+    "openItems": [
+      "Uygulama ikonu build/icon.png (başlık çubuğunda 22px) mor degrade bir \"h\"; paletin dışında. Kit renklerine göre yeniden boyanması kullanıcı kararı bekliyor; kural değildir."
+    ]
+  },
+  "components": [
+    {
+      "name": "Birincil Düğme",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Ekrandaki tek dolu kırmızı eylem; ayar sayfasında Ctrl ↵ rozetiyle.",
+      "html": "<button class=\"ds-btn-primary\">Projeyi oluştur <kbd class=\"ds-kbd\">Ctrl ↵</kbd></button>",
+      "css": ".ds-btn-primary{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:36px;padding:0 14px;border-radius:8px;font-family:\"Barlow\", system-ui, sans-serif;font-size:13.5px;font-weight:500;cursor:pointer;transition:background-color 150ms,border-color 150ms,color 150ms;min-width:196px;border:none;background:var(--action, #c8102e);color:var(--action-ink, #ffffff);font-weight:600;box-shadow:0 1px 0 rgb(255 255 255 / 0.18) inset;}.ds-btn-primary:hover{background:var(--action-hover, #a80c26);}.ds-btn-primary:disabled{opacity:.45;cursor:not-allowed;}.ds-btn-primary:focus-visible{outline:2px solid var(--accent-line, rgb(200 16 46 / 0.62));outline-offset:2px;}.ds-kbd{border:1px solid rgb(255 255 255 / 0.25);border-radius:4px;padding:1px 6px;font-family:\"JetBrains Mono Variable\", ui-monospace, monospace;font-size:10.5px;font-weight:500;opacity:0.8;}"
+    },
+    {
+      "name": "İkincil Düğme",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Plastik gri, ince çerçeveli; birincilin yanındaki diğer eylemler.",
+      "html": "<button class=\"ds-btn-secondary\">Klasörü aç</button>",
+      "css": ".ds-btn-secondary{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:36px;padding:0 14px;border-radius:8px;font-family:\"Barlow\", system-ui, sans-serif;font-size:13.5px;font-weight:500;cursor:pointer;transition:background-color 150ms,border-color 150ms,color 150ms;border:1px solid var(--border, #d0d4db);background:var(--surface, #f6f7f9);color:var(--text, #14161b);}.ds-btn-secondary:hover{border-color:var(--border-strong, #b3b9c4);background:var(--surface-2, #eceef2);}.ds-btn-secondary:focus-visible{outline:2px solid var(--accent-line, rgb(200 16 46 / 0.62));outline-offset:2px;}"
+    },
+    {
+      "name": "Hayalet Düğme",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Geri dönüş eylemleri: \"Ayarlara dön\", \"Yeni proje\".",
+      "html": "<button class=\"ds-btn-ghost\">Yeni proje</button>",
+      "css": ".ds-btn-ghost{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:36px;padding:0 14px;border-radius:8px;font-family:\"Barlow\", system-ui, sans-serif;font-size:13.5px;font-weight:500;cursor:pointer;transition:background-color 150ms,border-color 150ms,color 150ms;border:none;background:transparent;color:var(--text-2, #444955);}.ds-btn-ghost:hover{background:var(--surface-2, #eceef2);color:var(--text, #14161b);}.ds-btn-ghost:focus-visible{outline:2px solid var(--accent-line, rgb(200 16 46 / 0.62));outline-offset:2px;}"
+    },
+    {
+      "name": "Metin Alanı",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "36px alan; odakta kit renginde çerçeve ve yumuşak halka.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-field-label\">Proje adı</span><input class=\"ds-input\" value=\"siparis-takip\" /><span class=\"ds-field-hint\">Küçük harf, rakam ve tire.</span></label>",
+      "css": ".ds-field{display:flex;flex-direction:column;gap:6px;width:280px;font-family:\"Barlow\", system-ui, sans-serif;}.ds-field-label{font-size:12.5px;font-weight:500;color:var(--text-2, #444955);}.ds-field-hint{font-size:12px;color:var(--text-3, #5d6370);}.ds-input{height:36px;padding:0 12px;border-radius:8px;border:1px solid var(--border, #d0d4db);background:var(--surface, #f6f7f9);color:var(--text, #14161b);font-family:\"Barlow\", system-ui, sans-serif;font-size:13.5px;outline:none;caret-color:var(--accent, #c8102e);transition:border-color 150ms,box-shadow 150ms;}.ds-input:hover{border-color:var(--border-strong, #b3b9c4);}.ds-input:focus,.ds-input:focus-visible{border-color:var(--accent-line, rgb(200 16 46 / 0.62));box-shadow:0 0 0 3px var(--accent-soft, rgb(200 16 46 / 0.11));}"
+    },
+    {
+      "name": "Segment Seçici",
+      "kind": "chip",
+      "refersTo": "segmented",
+      "description": "Java sürümü, derleme aracı gibi tekli seçimler.",
+      "html": "<div class=\"ds-seg\" role=\"radiogroup\"><button class=\"ds-seg-opt\" role=\"radio\" aria-checked=\"false\">17</button><button class=\"ds-seg-opt\" role=\"radio\" aria-checked=\"true\">21</button><button class=\"ds-seg-opt\" role=\"radio\" aria-checked=\"false\">25</button></div>",
+      "css": ".ds-seg{display:inline-flex;padding:3px;border-radius:8px;border:1px solid var(--border, #d0d4db);background:var(--surface, #f6f7f9);}.ds-seg-opt{height:28px;padding:0 12px;border:none;border-radius:6px;background:transparent;color:var(--text-2, #444955);font-family:\"Barlow\", system-ui, sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:color 150ms;}.ds-seg-opt:hover{color:var(--text, #14161b);}.ds-seg-opt[aria-checked=\"true\"]{background:var(--surface-2, #eceef2);color:var(--text, #14161b);box-shadow:inset 0 0 0 1px var(--border-strong, #b3b9c4);}.ds-seg-opt:focus-visible{outline:2px solid var(--accent-line, rgb(200 16 46 / 0.62));outline-offset:2px;}"
+    },
+    {
+      "name": "Etiket ve Seçenek Çipi",
+      "kind": "chip",
+      "refersTo": "tag",
+      "description": "Nötr/ok/warn etiketler; seçili ve seçili olmayan seçenek çipi.",
+      "html": "<div class=\"ds-row\"><span class=\"ds-tag\">pygame-ce</span><span class=\"ds-tag ds-tag-ok\">önerilir</span><span class=\"ds-tag ds-tag-warn\">çevrimdışı katalog</span><button class=\"ds-chip\" role=\"checkbox\" aria-checked=\"true\">Tailwind</button><button class=\"ds-chip\" role=\"checkbox\" aria-checked=\"false\">React Router</button></div>",
+      "css": ".ds-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-family:\"Barlow\", system-ui, sans-serif;}.ds-tag{display:inline-flex;align-items:center;height:18px;padding:0 6px;border-radius:4px;font-size:11px;font-weight:500;background:var(--surface-2, #eceef2);color:var(--text-2, #444955);}.ds-tag-ok{background:var(--ok-soft, rgb(23 128 79 / 0.11));color:var(--ok, #17804f);}.ds-tag-warn{background:var(--warn-soft, rgb(154 95 0 / 0.11));color:var(--warn, #9a5f00);}.ds-chip{display:inline-flex;align-items:center;height:28px;padding:0 10px;border-radius:6px;border:1px solid var(--border, #d0d4db);background:transparent;color:var(--text-2, #444955);font-family:\"Barlow\", system-ui, sans-serif;font-size:12.5px;cursor:pointer;transition:border-color 150ms,color 150ms;}.ds-chip:hover{border-color:var(--border-strong, #b3b9c4);color:var(--text, #14161b);}.ds-chip[aria-checked=\"true\"]{border-color:var(--accent-line, rgb(200 16 46 / 0.62));background:var(--accent-soft, rgb(200 16 46 / 0.11));color:var(--text, #14161b);}.ds-chip:focus-visible{outline:2px solid var(--accent-line, rgb(200 16 46 / 0.62));outline-offset:2px;}"
+    },
+    {
+      "name": "Başlık Çubuğu",
+      "kind": "nav",
+      "refersTo": "title-bar",
+      "description": "40px; uygulama adı, kit karesi + ekran adı, araç durumu ve tema düğmesi.",
+      "html": "<header class=\"ds-titlebar\"><span class=\"ds-tb-icon\"></span><b>create-hazal-app</b><span class=\"ds-tb-sep\">/</span><span class=\"ds-tb-kit\"></span><span class=\"ds-tb-crumb\">Fullstack web</span><span class=\"ds-tb-fill\"></span><button class=\"ds-tb-status\"><span class=\"ds-dot\"></span>Docker<span class=\"ds-dot ds-dot-warn\"></span><span class=\"ds-warn\">Node.js yok</span></button><button class=\"ds-tb-theme\" aria-label=\"Koyu temaya geç\"><svg width=\"15\" height=\"15\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z\"/></svg></button></header>",
+      "css": ".ds-titlebar{display:flex;align-items:center;gap:8px;width:640px;height:40px;padding:0 14px;box-sizing:border-box;border-bottom:1px solid var(--border, #d0d4db);background:var(--bg, #e7e9ed);color:var(--text, #14161b);font-family:\"Barlow\", system-ui, sans-serif;font-size:13px;}.ds-tb-icon{width:22px;height:22px;border-radius:6px;background:var(--border-strong, #b3b9c4);margin-right:4px;}.ds-tb-sep{color:var(--text-3, #5d6370);}.ds-tb-kit{width:8px;height:8px;border-radius:3px;background:var(--kit-fullstack, #2f4fb5);}.ds-tb-crumb{color:var(--text-2, #444955);}.ds-tb-fill{flex:1;}.ds-tb-status,.ds-tb-theme{display:flex;align-items:center;gap:6px;height:28px;padding:0 8px;border:none;border-radius:6px;background:transparent;color:var(--text-2, #444955);font-family:\"Barlow\", system-ui, sans-serif;font-size:12.5px;cursor:pointer;}.ds-tb-theme{width:28px;padding:0;justify-content:center;}.ds-tb-status:hover,.ds-tb-theme:hover{background:var(--surface-2, #eceef2);color:var(--text, #14161b);}.ds-tb-status:focus-visible{outline:2px solid var(--accent-line, rgb(200 16 46 / 0.62));outline-offset:2px;}.ds-tb-theme:focus-visible{outline:2px solid var(--accent-line, rgb(200 16 46 / 0.62));outline-offset:2px;}.ds-dot{width:6px;height:6px;border-radius:50%;background:var(--ok, #17804f);margin-left:6px;}.ds-dot-warn{background:var(--warn, #9a5f00);}.ds-warn{color:var(--warn, #9a5f00);}"
+    },
+    {
+      "name": "Kit Kartı",
+      "kind": "card",
+      "refersTo": "kit-card",
+      "description": "Açılıştaki kutu kapağı: kit renginde şerit, \"Kutuda\" altında numaralı parçalar.",
+      "html": "<button class=\"ds-kit\"><div class=\"ds-kit-strip\"><span class=\"ds-kit-icon\"><svg width=\"19\" height=\"19\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"2\" y=\"2\" width=\"20\" height=\"8\" rx=\"2\"/><rect x=\"2\" y=\"14\" width=\"20\" height=\"8\" rx=\"2\"/><path d=\"M6 6h.01M6 18h.01\"/></svg></span><span class=\"ds-kit-title\">REST API</span></div><div class=\"ds-kit-body\"><p>Arayüzü olmayan bir Spring Boot servisi.</p><div class=\"ds-kit-label\">Kutuda</div><ol><li><span class=\"ds-pn\">A1</span><b>Spring Boot API</b> · Maven ya da Gradle</li><li><span class=\"ds-pn\">A2</span><b>Veritabanı</b> · SQL ve NoSQL</li><li><span class=\"ds-pn\">A3</span><b>Docker Compose</b></li></ol></div></button>",
+      "css": ".ds-kit{display:flex;flex-direction:column;width:240px;padding:0;overflow:hidden;text-align:left;border-radius:16px;border:1px solid var(--border, #d0d4db);background:var(--surface, #f6f7f9);box-shadow:var(--card-shadow, 0 1px 0 rgb(255 255 255 / 0.7) inset, 0 6px 16px -12px rgb(20 24 34 / 0.4));font-family:\"Barlow\", system-ui, sans-serif;cursor:pointer;transition:transform 200ms ease-out,box-shadow 200ms ease-out,border-color 200ms ease-out;}.ds-kit:hover{transform:translateY(-2px);border-color:var(--border-strong, #b3b9c4);box-shadow:var(--shadow, 0 10px 28px -16px rgb(20 24 34 / 0.35));}.ds-kit:focus-visible{outline:2px solid var(--accent-line, rgb(200 16 46 / 0.62));outline-offset:2px;}.ds-kit-strip{display:flex;flex-direction:column;justify-content:space-between;height:92px;padding:16px;box-sizing:border-box;background:var(--kit-backend, #1f8a4c);color:#ffffff;}.ds-kit-icon{display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:12px;background:rgb(255 255 255 / 0.2);box-shadow:inset 0 0 0 1px rgb(255 255 255 / 0.28);}.ds-kit-title{font-family:\"Barlow Semi Condensed\", \"Barlow\", system-ui, sans-serif;font-size:22px;font-weight:700;line-height:1;}.ds-kit-body{padding:14px 16px 16px;}.ds-kit-body p{margin:0;font-size:13.5px;line-height:1.35;color:var(--text-2, #444955);}.ds-kit-label{margin:12px 0 6px;font-size:12px;font-weight:600;color:var(--text-3, #5d6370);}.ds-kit-body ol{margin:0;padding:0;list-style:none;display:grid;gap:4px;font-size:13px;color:var(--text-3, #5d6370);}.ds-kit-body b{font-weight:500;color:var(--text, #14161b);}.ds-pn{display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:18px;margin-right:8px;padding:0 4px;box-sizing:border-box;border-radius:5px;font-family:\"Barlow Semi Condensed\", \"Barlow\", system-ui, sans-serif;font-size:11.5px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--text, #14161b);background:color-mix(in srgb, var(--kit-backend, #1f8a4c) 22%, transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--kit-backend, #1f8a4c) 45%, transparent);}"
+    },
+    {
+      "name": "Parça Çerçevesi",
+      "kind": "custom",
+      "refersTo": "runner-frame",
+      "description": "Harfli grup çerçevesi; ortadaki çubuğa kollarla bağlı numaralı yuvalar, bekleyen parça kesik çizgili.",
+      "html": "<section class=\"ds-runner\"><div class=\"ds-runner-head\"><span class=\"ds-runner-letter\">A</span>Çekirdek</div><ul class=\"ds-runner-grid\"><span class=\"ds-runner-bar\"></span><li class=\"ds-part\"><span class=\"ds-arm ds-arm-r\"></span><span class=\"ds-part-no\">A1</span> Spring Boot<div class=\"ds-part-detail\">Java 21 · Maven</div></li><li class=\"ds-part ds-part-waiting\"><span class=\"ds-arm ds-arm-l\"></span><span class=\"ds-part-no\">A2</span> React<div class=\"ds-part-detail\">TypeScript · Vite</div></li></ul></section>",
+      "css": "@keyframes ds-snap{0%{opacity:.6;transform:scale(.97)}60%{opacity:1;transform:scale(1.03)}}.ds-runner{width:330px;padding:10px;border-radius:16px;border:2px solid color-mix(in srgb, var(--border-strong, #b3b9c4) 70%, transparent);font-family:\"Barlow\", system-ui, sans-serif;}.ds-runner-head{display:flex;align-items:center;gap:8px;margin:0 4px 8px;font-size:12.5px;font-weight:600;color:var(--text-2, #444955);}.ds-runner-letter{display:flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:6px;background:var(--accent, #c8102e);color:var(--accent-ink, #ffffff);font-family:\"Barlow Semi Condensed\", \"Barlow\", system-ui, sans-serif;font-size:12.5px;font-weight:700;}.ds-runner-grid{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;margin:0;padding:0;list-style:none;}.ds-runner-bar{position:absolute;top:4px;bottom:4px;left:50%;width:2px;transform:translateX(-50%);border-radius:2px;background:color-mix(in srgb, var(--border-strong, #b3b9c4) 70%, transparent);}.ds-part{position:relative;padding:6px 8px;border-radius:8px;border:1px solid var(--border, #d0d4db);background:var(--surface, #f6f7f9);box-shadow:var(--card-shadow, 0 1px 0 rgb(255 255 255 / 0.7) inset, 0 6px 16px -12px rgb(20 24 34 / 0.4));font-size:12.5px;font-weight:500;color:var(--text, #14161b);animation:ds-snap 240ms cubic-bezier(0.16,1,0.3,1);}.ds-part-waiting{border-style:dashed;border-color:var(--border-strong, #b3b9c4);background:transparent;box-shadow:none;opacity:.6;animation:none;}.ds-part-no{font-family:\"Barlow Semi Condensed\", \"Barlow\", system-ui, sans-serif;font-size:12px;font-weight:700;color:var(--accent, #c8102e);font-variant-numeric:tabular-nums;}.ds-part-detail{font-size:11.5px;font-weight:400;color:var(--text-3, #5d6370);}.ds-arm{position:absolute;top:50%;width:8px;height:2px;transform:translateY(-50%);background:color-mix(in srgb, var(--border-strong, #b3b9c4) 70%, transparent);}.ds-arm-r{right:-9px;}.ds-arm-l{left:-9px;}@media (prefers-reduced-motion: reduce){.ds-part{animation:none;}}"
+    },
+    {
+      "name": "Montaj Adımı",
+      "kind": "custom",
+      "refersTo": "step-row",
+      "description": "Oluşturma ekranının numaralı kitapçık adımları: bitti, sürüyor, bekliyor.",
+      "html": "<ol class=\"ds-steps\"><li class=\"ds-step\"><span class=\"ds-badge ds-badge-done\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M20 6 9 17l-5-5\"/></svg></span><span class=\"ds-step-label\">Backend oluşturuluyor</span><span class=\"ds-step-time\">4 sn</span></li><li class=\"ds-step ds-step-running\"><span class=\"ds-badge ds-badge-running\">2</span><span class=\"ds-step-label\">Docker imajları hazırlanıyor</span><span class=\"ds-step-time\">12 sn</span></li><li class=\"ds-step\"><span class=\"ds-badge\">3</span><span class=\"ds-step-label ds-muted\">Servisler başlatılıyor</span><span class=\"ds-step-time\"></span></li></ol>",
+      "css": "@keyframes ds-spin{to{transform:rotate(360deg)}}.ds-steps{display:grid;gap:8px;width:420px;margin:0;padding:0;list-style:none;font-family:\"Barlow\", system-ui, sans-serif;}.ds-step{display:flex;align-items:center;gap:14px;padding:12px 16px;border-radius:12px;border:1px solid var(--border, #d0d4db);background:var(--surface, #f6f7f9);transition:background-color 200ms,border-color 200ms;}.ds-step-running{border-color:var(--accent-line, rgb(200 16 46 / 0.62));background:var(--accent-soft, rgb(200 16 46 / 0.11));}.ds-badge{position:relative;display:flex;align-items:center;justify-content:center;width:32px;height:32px;flex-shrink:0;box-sizing:border-box;border-radius:50%;border:2px solid var(--border-strong, #b3b9c4);color:var(--text-3, #5d6370);font-family:\"Barlow Semi Condensed\", \"Barlow\", system-ui, sans-serif;font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;}.ds-badge-done{border:none;background:var(--ok, #17804f);color:#ffffff;}.ds-badge-running{border:none;background:var(--accent, #c8102e);color:var(--accent-ink, #ffffff);}.ds-badge-running::after{content:\"\";position:absolute;inset:-4px;border-radius:50%;border:2px solid transparent;border-top-color:var(--accent, #c8102e);animation:ds-spin 1s linear infinite;}.ds-step-label{flex:1;font-size:14px;font-weight:500;color:var(--text, #14161b);}.ds-muted{font-weight:400;color:var(--text-3, #5d6370);}.ds-step-time{font-family:\"JetBrains Mono Variable\", ui-monospace, monospace;font-size:11.5px;color:var(--text-3, #5d6370);}@media (prefers-reduced-motion: reduce){.ds-badge-running::after{animation:none;}}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Maket Kiti",
+    "overview": "Her proje bir plastik maket kiti gibi kurulur. Açılış ekranı dört kutu kapağıdır: her kutunun kendi rengi, adı ve \"Kutuda\" altında numaralı parça listesi vardır. Ayar sayfasında yapılan her seçim, sağdaki parça çerçevesinde (runner) numaralı bir yuvaya takılır; oluşturma ekranı montaj kitapçığının numaralı adımlarıdır. Bitince tek bir kırmızı düğme kalır: \"VS Code'da aç\". Arayüz, kategori varsayılanı olan \"gri yüzey + tek mor vurgu + düz form listesi\" düzenini bilinçli olarak reddeder.\n\nMalzeme plastik çerçeve grisidir: açık temada açık gri döküm plastik, koyu temada siyaha kaçmayan koyu gunmetal. Tek bir gri ton merdiveni (bg, panel, surface, surface-2) zemini taşır; renk sadece iki yerden gelir: kit kutusunun rengi (kimlik ve seçim) ve kit kutusu kırmızısı (tek birincil eylem). Yoğunluk masaüstü aracı yoğunluğudur: 14px gövde, 13–13.5px kontroller, sıkı satırlar, en küçük pencere 980×640.\n\nHareket \"yerine oturma\" dilidir. Seçilen parça çerçeveye hafifçe büyüyüp küçülerek takılır (snap); biten montaj adımının rozeti de aynı hareketle oturur. Bekleyen her şey kesik çizgili ve soluktur.",
+    "keyCharacteristics": [
+      "Tek gri ton merdiveni + kit başına kutu rengi + tek kırmızı eylem.",
+      "Parça numaraları (A1, B2, C3) dar, kalın, tabular; numaralandırmayı kitler değil parçalar taşır.",
+      "Kesik çizgi = henüz kutudan çıkmamış (boş yuva, bekleyen parça, atlanan adım, \"Yok\" seçeneği, kullanıcının kendi kayıtlı şablonu).",
+      "Yumuşak köşeli, ince çizgili döküm plastik formlar; gölge sadece \"parça\" olan nesnelerde.",
+      "Yol, port, komut, log ve dosya ağacı her zaman JetBrains Mono."
+    ],
+    "rules": [
+      {
+        "name": "Tek Kırmızı Kuralı",
+        "body": "Dolu kırmızı (`action`) ekranda sadece bir düğmede durur: o ekranın birincil eylemi. İkinci bir eylem gerekiyorsa ikincil (çerçeveli) düğme olur.",
+        "section": "colors"
+      },
+      {
+        "name": "Seçim Kutunun Rengidir Kuralı",
+        "body": "Seçili durum hiçbir zaman kırmızı eylem rengiyle gösterilmez; her zaman açık kitin `--accent` rengiyle (`accent-line` çerçeve + `accent-soft` zemin). Kit renkleri sabit değerle değil `var(--kit-…)` / `var(--accent)` ile kullanılır ki tema ve kit değişince birlikte dönsün.",
+        "section": "colors"
+      },
+      {
+        "name": "Siyaha Kaçmama Kuralı",
+        "body": "Koyu tema koyu gunmetaldir (`dark-bg` ve üstü); saf siyah zemin ya da saf beyaz metin kullanılmaz.",
+        "section": "colors"
+      },
+      {
+        "name": "Dar Başlık Kuralı",
+        "body": "Barlow Semi Condensed yalnızca başlıklar, parça/adım numaraları ve sayaçlar içindir; gövde metni, düğme ve alan yazısı her zaman Barlow'dur.",
+        "section": "typography"
+      },
+      {
+        "name": "Mono Makine İçindir Kuralı",
+        "body": "Kullanıcının kopyalayacağı ya da makinenin okuyacağı her değer (yol, port, komut, ortam değişkeni, dosya adı, log) JetBrains Mono ve tabular rakamla yazılır; açıklayıcı Türkçe metin asla mono olmaz.",
+        "section": "typography"
+      },
+      {
+        "name": "Sadece Parçalar Gölge Alır Kuralı",
+        "body": "Liste, form satırı, bölüm ve adım satırı düzdür (çizgi + yüzey). Gölge ancak nesne bir kit parçası ya da geçici olarak havada ise eklenir.",
+        "section": "elevation"
+      },
+      {
+        "name": "Yuva Kuralı",
+        "body": "Bekleyen parça kesik çizgili, saydam zeminli ve %60 opaklıktadır; takılınca düz çizgi + `surface` + parça gölgesi alır ve snap hareketiyle oturur. Aynı dil adım rozetinde de geçerlidir: bekleyen adım çizgili halka, atlanan adım kesik halka, biten adım dolu yeşil.",
+        "section": "shapes"
+      }
+    ],
+    "dos": [
+      "**Do** zemin için yalnızca gri ton merdivenini (`bg` → `panel` → `surface` → `surface-2`) kullan; ayrımı 1px çizgiyle yap.",
+      "**Do** seçili durumu açık kitin `--accent` rengiyle göster: `accent-line` çerçeve + `accent-soft` zemin.",
+      "**Do** her ekranda tek dolu kırmızı (`action`) düğme bırak; diğer eylemler secondary ya da ghost olsun.",
+      "**Do** projeye giren her şeyi harf+numaralı parça (A1, B2, C3) olarak göster; grup harfleri sabit kalsın (A Çekirdek, B Seçimler, C Altyapı).",
+      "**Do** bekleyen/boş/kutuya ait olmayan şeyleri kesik çizgiyle, takılan parçayı düz çizgi + parça gölgesi + snap ile göster.",
+      "**Do** yol, port, komut, anahtar ve logu JetBrains Mono ve tabular rakamla yaz.",
+      "**Do** kit renklerini `var(--kit-…)` ve `var(--accent)` üzerinden kullan; sarı Python kutusunda koyu mürekkep (`kit-python-ink`) kullan.",
+      "**Do** açılıştaki dört kartı 980px en küçük pencerede de tek sırada tut."
+    ],
+    "donts": [
+      "**Don't** \"gri yüzey + tek mor vurgu + düz form listesi\" düzenine dön; mor bir vurgu rengi ekleme.",
+      "**Don't** seçili durumu kırmızı eylem rengiyle ya da bir kitin rengini başka bir kitin ekranında seçim rengi olarak kullan.",
+      "**Don't** kit kartlarına kit kodu ya da bilgi taşımayan numara koy; numaralandırmayı parçalar taşır.",
+      "**Don't** liste, form satırı ya da bölüm kutusuna gölge ver; gölge sadece parçalar ve havada duranlar içindir.",
+      "**Don't** koyu temada saf siyah zemin kullan.",
+      "**Don't** Barlow Semi Condensed'i gövde metninde, düğmede ya da alanda kullan.",
+      "**Don't** açılış kartlarını en küçük pencerede 2×2 diz; ikinci sıra ekran dışına düşer."
+    ]
+  }
+}

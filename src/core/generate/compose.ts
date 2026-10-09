@@ -3,7 +3,7 @@ import { findFramework } from '../catalog/frontend.js';
 import { findService, type ServiceContext } from '../catalog/services.js';
 import type { PortAssignment, ResolvedProject } from '../types.js';
 import { dockerPublishedPorts, findFreePort, randomPassword } from '../util.js';
-import { hasBackend } from '../selection.js';
+import { hasBackend, isPython } from '../selection.js';
 import { securityEnv } from './backend.js';
 
 export function serviceContext(resolved: ResolvedProject): ServiceContext {
@@ -23,6 +23,8 @@ interface PortSpec {
 
 /** Projede bilgisayara açılacak tüm portlar (frontend, backend, veritabanları, servisler) */
 function portSpecs(resolved: ResolvedProject): PortSpec[] {
+  // Python projeleri Docker Compose kullanmaz; bilgisayarda doğrudan çalışır
+  if (isPython(resolved.selection)) return [];
   const specs: PortSpec[] = [];
   const framework = resolved.selection.frontend.framework;
   if (framework) specs.push({ envName: 'FRONTEND_PORT', label: 'Uygulama', preferred: findFramework(framework).devPort, web: 'root' });

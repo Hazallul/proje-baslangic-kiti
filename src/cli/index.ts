@@ -8,26 +8,32 @@ import pc from 'picocolors';
 import { DATABASES } from '../core/catalog/databases.js';
 import { FRAMEWORKS, findFramework, OPTION_GROUPS } from '../core/catalog/frontend.js';
 import { NEEDS } from '../core/catalog/needs.js';
+import { findPythonOption, PYTHON_TEMPLATES } from '../core/catalog/python.js';
 import { generateProject, isTargetFree, STEP_LABELS } from '../core/generate/index.js';
 import { serviceLinks } from '../core/generate/compose.js';
 import { loadCatalog } from '../core/initializr.js';
 import {
-  applyPreset, availableServices, defaultSelection, GROUP_PATTERN, NAME_PATTERN, PRESETS, resolve as resolveSelection,
-  setFramework, setNeed, setProjectKind, suggestedServices,
+  applyPreset, availableServices, defaultSelection, GROUP_PATTERN, isPython, NAME_PATTERN, PRESETS, REMOTE_URL_PATTERN,
+  resolve as resolveSelection,
+  setFramework, setNeed, setProjectKind, setPythonTemplate, suggestedServices, validate, withDefaults,
 } from '../core/selection.js';
-import type { FrameworkId, Selection } from '../core/types.js';
+import type { FrameworkId, PythonTemplate, Selection } from '../core/types.js';
 
 const VERSION = '0.3.0';
 
 const HELP = `
-${pc.bold('create-hazal-app')} - Spring Boot projesini (isteğe bağlı frontend ve Docker servisleriyle) kurar
+${pc.bold('create-hazal-app')} - Spring Boot, frontend ve Python projelerini çalışır halde kurar
 
 ${pc.bold('Kullanım')}
   create-hazal-app [proje-adı] [seçenekler]
 
 ${pc.bold('Seçenekler')}
   --config <dosya>  Seçimleri JSON dosyasından oku (soru sormaz)
-  --no-start        Docker ile başlatma
+  --no-start        Docker ile başlatma / Python paketlerini kurma
+  --no-git          Git deposu başlatma
+  --remote <url>    İlk commit'ten sonra bu (boş) depoya gönder
+  --github          GitHub'da yeni gizli depo aç ve gönder (kayıtlı git girişiyle)
+  --public          --github ile: depo herkese açık olsun
   -h, --help        Bu yardımı göster
   -v, --version     Sürümü göster
 `;
@@ -46,6 +52,10 @@ async function main(): Promise<void> {
     options: {
       config: { type: 'string' },
       'no-start': { type: 'boolean' },
+      'no-git': { type: 'boolean' },
+      remote: { type: 'string' },
+      github: { type: 'boolean' },
+      public: { type: 'boolean' },
       help: { type: 'boolean', short: 'h' },
       version: { type: 'boolean', short: 'v' },
     },
@@ -58,23 +68,23 @@ async function main(): Promise<void> {
   let sel: Selection;
   if (flags.config) {
     // İç içe alanlar da birleştirilir: JSON'da sadece backend.dependencies verilse bile diğer backend ayarları varsayılan kalır
-    const base = defaultSelection();
-    const json = JSON.parse(readFileSync(flags.config, 'utf8')) as Partial<Selection>;
-    sel = {
-      ...base,
-      ...json,
-      backend: { ...base.backend, ...json.backend },
-      database: { ...base.database, ...json.database },
-      frontend: { ...base.frontend, ...json.frontend },
-    };
+    sel = withDefaults(JSON.parse(readFileSync(flags.config, 'utf8')) as Partial<Selection>);
     if (positionals[0]) sel.name = positionals[0];
   } else {
     sel = await ask(positionals[0]);
+    if (!flags['no-git'] && !flags.remote && !flags.github) sel = await askGit(sel);
   }
+  if (flags['no-git']) sel.git = false;
+  if (flags.remote) sel.gitRemote = { ...sel.gitRemote, mode: 'url', url: flags.remote };
+  if (flags.github) sel.gitRemote = { ...sel.gitRemote, mode: 'github', private: !flags.public };
   sel.location = resolvePath(sel.location || process.cwd());
-  if (flags['no-start']) sel.start = false;
+  if (flags['no-start']) {
+    sel.start = false;
+    sel.python.install = false;
+  }
 
-  if (!NAME_PATTERN.test(sel.name)) throw new Error(`Geçersiz proje adı: ${sel.name}`);
+  const issue = validate(sel)[0];
+  if (issue) throw new Error(issue.message);
   if (!isTargetFree(sel)) throw new Error(`"${sel.name}" klasörü zaten var ve boş değil.`);
 
   const spinner = p.spinner();
@@ -93,6 +103,13 @@ async function main(): Promise<void> {
   });
 
   result.warnings.forEach((w) => p.log.warn(w));
+  if (isPython(sel)) {
+    const commands = (result.commands ?? []).map((c) => `${c.command.padEnd(44)} ${pc.dim(`# ${c.label}`)}`);
+    p.note([`cd ${sel.name}`, ...commands].join('\n'), 'Sıradaki adımlar');
+    if (result.repoUrl) p.log.info(`Depo: ${pc.cyan(result.repoUrl)}`);
+    p.outro(`${pc.green('Hazır!')} VS Code'da açıp F5 ile çalıştırabilirsin.`);
+    return;
+  }
   if (result.started) {
     const links = serviceLinks(resolveSelection(sel), result.ports)
       .map((l) => `${l.label.padEnd(16)} ${pc.cyan(l.url)}`)
@@ -104,6 +121,7 @@ async function main(): Promise<void> {
       .filter(Boolean).join('\n'),
     'Sıradaki adımlar',
   );
+  if (result.repoUrl) p.log.info(`Depo: ${pc.cyan(result.repoUrl)}`);
   p.outro(`${pc.green('Hazır!')} Kolay gelsin 🚀`);
 }
 
@@ -124,8 +142,10 @@ async function ask(nameArg?: string): Promise<Selection> {
       { value: 'fullstack' as const, label: 'Fullstack', hint: 'Spring Boot + frontend' },
       { value: 'backend' as const, label: 'Sadece backend', hint: 'Spring Boot API' },
       { value: 'frontend' as const, label: 'Sadece frontend', hint: 'Backend yok: portfolyo, tanıtım sitesi' },
+      { value: 'python' as const, label: 'Python', hint: 'Oyun/simülasyon, FastAPI ya da konsol uygulaması' },
     ],
   }));
+  if (kind === 'python') return askPython(setProjectKind(sel, 'python'));
   if (kind === 'frontend') {
     sel = setProjectKind(sel, 'frontend');
     await askFrontend(sel, false);
@@ -233,6 +253,47 @@ async function ask(nameArg?: string): Promise<Selection> {
 
   sel.start = check(await p.confirm({ message: 'Oluşunca Docker ile başlatılsın mı?', initialValue: true }));
   return sel;
+}
+
+/** Git deposu ve uzak depo. Commit ve push bilgisayardaki git'in kimliği ve kayıtlı girişiyle yapılır. */
+async function askGit(sel: Selection): Promise<Selection> {
+  const mode = check(await p.select({
+    message: 'Git?',
+    options: [
+      { value: 'local' as const, label: 'Bu bilgisayarda depo', hint: 'ilk commit ile' },
+      { value: 'github' as const, label: "GitHub'da yeni depo aç", hint: 'kayıtlı git girişiyle' },
+      { value: 'url' as const, label: 'Açtığım depoya gönder', hint: 'boş deponun adresini yapıştır' },
+      { value: 'none' as const, label: 'Git yok' },
+    ],
+  }));
+  if (mode === 'none') return { ...sel, git: false };
+  const remote = { ...sel.gitRemote, mode };
+  if (mode === 'url') {
+    remote.url = check(await p.text({
+      message: 'Depo adresi?',
+      placeholder: 'https://github.com/kullanici/depo.git',
+      validate: (v) => (v && REMOTE_URL_PATTERN.test(v.trim()) ? undefined : 'Örnek: https://github.com/kullanici/depo.git'),
+    })).trim();
+  }
+  if (mode === 'github') remote.private = check(await p.confirm({ message: 'Depo gizli olsun mu?', initialValue: true }));
+  return { ...sel, git: true, gitRemote: remote };
+}
+
+async function askPython(sel: Selection): Promise<Selection> {
+  const template = check(await p.select({
+    message: 'Python şablonu?',
+    options: PYTHON_TEMPLATES.map((t) => ({ value: t.id, label: t.label, hint: t.description })),
+  })) as PythonTemplate;
+  sel = setPythonTemplate(sel, template);
+  const available = PYTHON_TEMPLATES.find((t) => t.id === template)!.options;
+  const options = check(await p.multiselect({
+    message: 'Seçenekler? (boşluk ile seç)',
+    options: available.map((id) => ({ value: id, label: findPythonOption(id).label, hint: findPythonOption(id).description })),
+    initialValues: sel.python.options,
+    required: false,
+  }));
+  const install = check(await p.confirm({ message: 'Sanal ortam kurulup paketler indirilsin mi?', initialValue: true }));
+  return { ...sel, python: { ...sel.python, options, install } };
 }
 
 /** Framework ve seçeneklerini sorar (sel'i yerinde günceller ve döner) */

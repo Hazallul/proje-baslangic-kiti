@@ -17,9 +17,9 @@ export function Section({ id, title, meta, hint, children }: {
   children: ReactNode;
 }) {
   return (
-    <section id={id} className="scroll-mt-4 pt-7 first:pt-5">
+    <section id={id} className="scroll-mt-4 pt-8 first:pt-6">
       <div className="mb-3 flex items-baseline justify-between gap-4">
-        <h2 className="flex items-center gap-1.5 text-[13.5px] font-semibold tracking-[-0.005em] text-fg">
+        <h2 className="flex items-center gap-1.5 font-display text-[17px] font-bold tracking-[0.005em] text-fg">
           {title}
           {hint && (
             <span title={hint} className="text-fg-3">
@@ -27,7 +27,7 @@ export function Section({ id, title, meta, hint, children }: {
             </span>
           )}
         </h2>
-        {meta && <div className="text-[12px] text-fg-2">{meta}</div>}
+        {meta && <div className="text-[12.5px] text-fg-2">{meta}</div>}
       </div>
       {children}
     </section>
@@ -36,14 +36,14 @@ export function Section({ id, title, meta, hint, children }: {
 
 export function FieldLabel({ children, htmlFor }: { children: ReactNode; htmlFor?: string }) {
   return (
-    <label htmlFor={htmlFor} className="mb-1.5 block text-[12px] font-medium text-fg-2">
+    <label htmlFor={htmlFor} className="mb-1.5 block text-[12.5px] font-medium text-fg-2">
       {children}
     </label>
   );
 }
 
 export const inputClass =
-  'h-9 w-full rounded-md border border-line bg-surface px-3 text-[13px] text-fg outline-none transition-colors placeholder:text-fg-3 hover:border-line-strong focus:border-accent-line focus:ring-3 focus:ring-accent-soft';
+  'h-9 w-full rounded-lg border border-line bg-surface px-3 text-[13.5px] text-fg outline-none transition-colors placeholder:text-fg-3 hover:border-line-strong focus:border-accent-line focus:ring-3 focus:ring-accent-soft';
 
 // ---------------------------------------------------------------------------
 
@@ -103,7 +103,7 @@ export function Segmented<T extends string>({ value, options, onChange, size = '
   label: string;
 }) {
   return (
-    <div role="radiogroup" aria-label={label} className="inline-flex rounded-md border border-line bg-surface p-[3px]">
+    <div role="radiogroup" aria-label={label} className="inline-flex rounded-lg border border-line bg-surface p-[3px]">
       {options.map((o) => (
         <HelpPopover key={o.value} title={typeof o.label === 'string' ? o.label : o.value} help={o.help} className="inline-flex">
         <button
@@ -113,8 +113,8 @@ export function Segmented<T extends string>({ value, options, onChange, size = '
           title={o.help ? undefined : o.hint}
           onClick={() => onChange(o.value)}
           className={cx(
-            'rounded-[5px] font-medium transition-colors duration-150',
-            size === 'sm' ? 'h-6 px-2.5 text-[12px]' : 'h-[28px] px-3 text-[12.5px]',
+            'rounded-md font-medium transition-colors duration-150',
+            size === 'sm' ? 'h-6 px-2.5 text-[12.5px]' : 'h-[28px] px-3 text-[13px]',
             value === o.value ? 'bg-surface-2 text-fg shadow-[inset_0_0_0_1px_var(--border-strong)]' : 'text-fg-2 hover:text-fg',
           )}
         >
@@ -138,8 +138,8 @@ export function Button({ variant = 'secondary', className, children, ...props }:
       type="button"
       {...props}
       className={cx(
-        'inline-flex h-9 items-center justify-center gap-2 rounded-md px-3.5 text-[13px] font-medium transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-45',
-        variant === 'primary' && 'bg-accent text-accent-ink hover:bg-accent-hover',
+        'inline-flex h-9 items-center justify-center gap-2 rounded-lg px-3.5 text-[13.5px] font-medium transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-45',
+        variant === 'primary' && 'bg-action font-semibold text-action-ink shadow-[0_1px_0_rgb(255_255_255/0.18)_inset] hover:bg-action-hover',
         variant === 'secondary' && 'border border-line bg-surface text-fg hover:border-line-strong hover:bg-surface-2',
         variant === 'ghost' && 'text-fg-2 hover:bg-surface-2 hover:text-fg',
         variant === 'danger' && 'border border-line bg-surface text-danger hover:border-danger hover:bg-danger-soft',
@@ -170,7 +170,7 @@ const MARKS: Record<string, { text: string; color: string }> = {
   mongodb: { text: 'Mo', color: '#4ea94b' },
   redis: { text: 'Re', color: '#e0453a' },
   elasticsearch: { text: 'Es', color: '#14a89c' },
-  react: { text: 'Re', color: '#38bdf8' },
+  react: { text: 'Re', color: '#1f9fd6' },
   vue: { text: 'Vu', color: '#42b883' },
   angular: { text: 'Ng', color: '#e23d5b' },
   svelte: { text: 'Sv', color: '#ff5a1f' },

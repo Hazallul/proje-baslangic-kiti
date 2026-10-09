@@ -1,13 +1,16 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
-import { hasBackend, resolve as resolveSelection, validate } from '../selection.js';
-export { STEP_LABELS } from '../steps.js';
+import { hasBackend, isPython, resolve as resolveSelection, validate } from '../selection.js';
+export { planSteps, STEP_LABELS } from '../steps.js';
 import type { GenerateEvent, GenerateResult, PortAssignment, Selection, StepId } from '../types.js';
 import { CancelledError, commandSucceeds, run, waitForUrl, writeFiles } from '../util.js';
 import { generateBackend } from './backend.js';
 import { assignPorts, composeFile, credentialsOf, envFile, portsFromEnv, serviceFiles } from './compose.js';
 import { readme, rootGitignore } from './docs.js';
 import { generateFrontend } from './frontend.js';
+import { createGithubRepo, pushToRemote } from './git.js';
+import { findPython, installPythonEnv, writePythonProject } from './python.js';
+import { pythonCommands, pythonContext, requirementsFileOf, venvPython } from './python-files.js';
 
 export interface GenerateOptions {
   onEvent?: (event: GenerateEvent) => void;
@@ -29,6 +32,62 @@ export function isTargetFree(sel: Selection): boolean {
  * Dosya üretimi aşamasında hata olursa veya iptal edilirse yarım klasör silinir.
  */
 export async function generateProject(sel: Selection, opts: GenerateOptions = {}): Promise<GenerateResult> {
+  const issue = validate(sel)[0];
+  if (issue) throw new Error(issue.message);
+  if (!isTargetFree(sel)) throw new Error(`"${projectDirOf(sel)}" klasörü zaten var ve boş değil.`);
+  return isPython(sel) ? generatePython(sel, opts) : generateSpring(sel, opts);
+}
+
+/** Python projesi: dosyalar, isteğe bağlı sanal ortam ve paketler, git. Docker kullanılmaz. */
+async function generatePython(sel: Selection, opts: GenerateOptions): Promise<GenerateResult> {
+  const emit = opts.onEvent ?? (() => {});
+  const log = (text: string) => emit({ type: 'log', text });
+  const projectDir = projectDirOf(sel);
+  const ctx = pythonContext(sel, process.platform === 'win32');
+  const warnings: string[] = [];
+  const { step, skip } = stepRunner(emit, opts.signal);
+
+  try {
+    await step('python-files', async () => writePythonProject(sel, projectDir));
+  } catch (error) {
+    rmSync(projectDir, { recursive: true, force: true });
+    throw error;
+  }
+
+  // Kurulum başarısız olsa da (ör. internet yok) dosyalar kullanılabilir: hata uyarıya dönüşür
+  let installed = false;
+  if (sel.python.install) {
+    const python = await findPython();
+    if (!python) {
+      warnings.push("Python 3.10 veya üstü bulunamadı. python.org'dan kurup proje klasöründe aşağıdaki kurulum komutlarını çalıştır.");
+      skip('python-env', 'Python bulunamadı');
+    } else {
+      try {
+        await step('python-env', async () => {
+          const result = await installPythonEnv(sel, projectDir, python, { signal: opts.signal, log });
+          if (result.warning) warnings.push(result.warning);
+          return result.message;
+        });
+        installed = true;
+      } catch (error) {
+        if (error instanceof CancelledError) throw error;
+        warnings.push('Paketler kurulamadı (internet bağlantısını kontrol et). Aşağıdaki kurulum komutlarıyla tekrar deneyebilirsin.');
+      }
+    }
+  }
+
+  const repoUrl = await initGit(sel, projectDir, { step, skip, warnings, signal: opts.signal, log });
+
+  const python = venvPython(ctx.windows);
+  const setup = installed ? [] : [
+    { label: 'Sanal ortamı kur', command: 'python -m venv .venv' },
+    { label: 'Paketleri indir', command: `${python} -m pip install -r ${requirementsFileOf(ctx)}` },
+  ];
+  return { projectDir, ports: [], started: false, warnings, credentials: [], commands: [...setup, ...pythonCommands(ctx)], repoUrl };
+}
+
+/** Spring Boot ve/veya frontend projesi: Docker Compose ile. */
+async function generateSpring(sel: Selection, opts: GenerateOptions): Promise<GenerateResult> {
   const emit = opts.onEvent ?? (() => {});
   const log = (text: string) => emit({ type: 'log', text });
   const ctx = { signal: opts.signal, log };
@@ -37,9 +96,6 @@ export async function generateProject(sel: Selection, opts: GenerateOptions = {}
   const warnings: string[] = [];
   let credentials: GenerateResult['credentials'] = [];
 
-  const issue = validate(sel)[0];
-  if (issue) throw new Error(issue.message);
-  if (!isTargetFree(sel)) throw new Error(`"${projectDir}" klasörü zaten var ve boş değil.`);
   const conflict = await dockerConflict(sel.name);
   if (conflict) throw new Error(conflict);
 
@@ -82,22 +138,7 @@ export async function generateProject(sel: Selection, opts: GenerateOptions = {}
   }
 
   // 4: Git (başarısız olursa proje yine de kullanılabilir)
-  if (sel.git) {
-    await step('git', async () => {
-      await run('git init -q -b main', { cwd: projectDir });
-      // Bilgisayarda genel git kimliği yoksa arayüzde girilen ad/e-posta sadece bu depoya yazılır
-      if (sel.gitAuthor?.name && sel.gitAuthor.email) {
-        await run(`git config user.name "${sel.gitAuthor.name.replace(/"/g, '')}"`, { cwd: projectDir });
-        await run(`git config user.email "${sel.gitAuthor.email.replace(/"/g, '')}"`, { cwd: projectDir });
-      }
-      await run('git add -A', { cwd: projectDir });
-      if (await commandSucceeds(`git commit -q -m "${sel.name} projesi oluşturuldu"`, projectDir)) return 'İlk commit atıldı';
-      warnings.push('İlk commit atılamadı: git kullanıcı adı ve e-postası tanımlı değil (git config --global user.name / user.email).');
-      return 'Depo başlatıldı, ilk commit atılamadı';
-    });
-  } else {
-    skip('git');
-  }
+  const repoUrl = await initGit(sel, projectDir, { step, skip, warnings, signal: opts.signal, log });
 
   // 5-6: Docker
   let started = false;
@@ -113,7 +154,7 @@ export async function generateProject(sel: Selection, opts: GenerateOptions = {}
     started = true;
   }
 
-  return { projectDir, ports, started, warnings, credentials };
+  return { projectDir, ports, started, warnings, credentials, repoUrl };
 }
 
 /**
@@ -144,6 +185,60 @@ export async function dockerConflict(name: string): Promise<string | null> {
 export async function hasGitIdentity(): Promise<boolean> {
   const cwd = process.cwd();
   return (await commandSucceeds('git config --global user.name', cwd)) && (await commandSucceeds('git config --global user.email', cwd));
+}
+
+type StepRunner = ReturnType<typeof stepRunner>;
+
+/**
+ * Depoyu başlatır, ilk commit'i atar ve istenirse uzak depoya gönderir. Commit ve push bilgisayardaki
+ * git'in kimliğini ve kayıtlı girişini kullanır; hiçbir hesap bilgisi sorulmaz. Push başarısız olursa
+ * proje yerel olarak hazırdır, hata uyarıya dönüşür. Gönderilen deponun web adresini döner.
+ */
+async function initGit(sel: Selection, projectDir: string, ctx: StepRunner & {
+  warnings: string[];
+  signal?: AbortSignal;
+  log: (text: string) => void;
+}): Promise<string | undefined> {
+  const { step, skip, warnings } = ctx;
+  const remote = sel.gitRemote;
+  if (!sel.git) {
+    skip('git');
+    return undefined;
+  }
+  let committed = false;
+  await step('git', async () => {
+    await run('git init -q -b main', { cwd: projectDir });
+    // Bilgisayarda genel git kimliği yoksa arayüzde girilen ad/e-posta sadece bu depoya yazılır
+    if (sel.gitAuthor?.name && sel.gitAuthor.email) {
+      await run(`git config user.name "${sel.gitAuthor.name.replace(/"/g, '')}"`, { cwd: projectDir });
+      await run(`git config user.email "${sel.gitAuthor.email.replace(/"/g, '')}"`, { cwd: projectDir });
+    }
+    await run('git add -A', { cwd: projectDir });
+    committed = await commandSucceeds(`git commit -q -m "${sel.name} projesi oluşturuldu"`, projectDir);
+    if (committed) return 'İlk commit atıldı';
+    warnings.push('İlk commit atılamadı: git kullanıcı adı ve e-postası tanımlı değil (git config --global user.name / user.email).');
+    return 'Depo başlatıldı, ilk commit atılamadı';
+  });
+
+  if (remote.mode === 'local') return undefined;
+  if (!committed) {
+    skip('git-push', 'İlk commit atılamadı');
+    return undefined;
+  }
+  let repoUrl: string | undefined;
+  try {
+    await step('git-push', async () => {
+      const url = remote.mode === 'github'
+        ? await createGithubRepo(sel.name, remote.private, ctx.signal)
+        : remote.url.trim();
+      repoUrl = (await pushToRemote(projectDir, url, { signal: ctx.signal, log: ctx.log })) ?? undefined;
+      return remote.mode === 'github' ? `GitHub'da ${remote.private ? 'gizli' : 'açık'} depo açıldı, gönderildi` : 'main dalı gönderildi';
+    });
+  } catch (error) {
+    if (error instanceof CancelledError) throw error;
+    warnings.push(`Proje uzak depoya gönderilemedi. ${error instanceof Error ? error.message : String(error)}`);
+  }
+  return repoUrl;
 }
 
 function stepRunner(emit: (event: GenerateEvent) => void, signal?: AbortSignal) {
